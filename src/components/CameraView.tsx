@@ -3,6 +3,9 @@ import { DRUMS } from '../data/drums';
 import { DrumType, HitRating } from '../types';
 import { cameraTracker, HandPosition } from '../services/cameraTracker';
 import { Camera, CameraOff, RefreshCw } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface CameraViewProps {
   isCameraActive: boolean;
@@ -69,8 +72,10 @@ export const CameraView: React.FC<CameraViewProps> = ({
             const energy = zoneEnergies[drum.id] || 0;
 
             return (
-              <div
+              <Button
                 key={drum.id}
+                type="button"
+                variant="ghost"
                 onClick={() => onDrumClick?.(drum.id)}
                 title={drum.name}
                 style={{
@@ -139,7 +144,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
                     }}
                   />
                 </div>
-              </div>
+              </Button>
             );
           })}
 
@@ -202,13 +207,15 @@ export const CameraView: React.FC<CameraViewProps> = ({
             You can also click a drum or use keyboard shortcuts anytime!
           </p>
           {cameraError && (
-            <div role="alert" className="mb-4 max-w-md rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-              {cameraError}
-            </div>
+            <Alert variant="destructive" className="mb-4 max-w-md border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+              <AlertDescription className="text-xs text-rose-200">{cameraError}</AlertDescription>
+            </Alert>
           )}
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
+            <Button
               id="camera-start-btn"
+              type="button"
+              size="lg"
               onClick={onToggleCamera}
               disabled={isCameraInitializing}
               className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 px-5 py-2.5 text-sm font-semibold text-zinc-950 shadow-lg shadow-rose-500/25 transition-transform hover:scale-105 active:scale-95 disabled:cursor-wait disabled:opacity-70 disabled:hover:scale-100"
@@ -219,7 +226,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
                 <Camera className="h-4 w-4 stroke-[2.5]" />
               )}
               {isCameraInitializing ? 'Starting Camera...' : 'Start Webcam'}
-            </button>
+            </Button>
           </div>
           <p className="mt-4 text-[11px] text-zinc-400 flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -231,20 +238,23 @@ export const CameraView: React.FC<CameraViewProps> = ({
       {/* Camera Live Controls Floating Bar */}
       {isCameraActive && (
         <div className="absolute bottom-3 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
-          <div className="flex items-center gap-2 bg-zinc-950/80 backdrop-blur border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-300 pointer-events-auto">
+          <Badge variant="outline" className="h-auto gap-2 rounded-lg border-zinc-800 bg-zinc-950/80 px-2.5 py-1 text-xs font-normal text-zinc-300 backdrop-blur pointer-events-auto">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
             <span className="font-mono text-[11px]">MediaPipe Index Tracking</span>
-          </div>
+          </Badge>
 
           <div className="flex items-center gap-2 pointer-events-auto">
-            <button
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={onToggleCamera}
               className="flex items-center gap-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700/80 px-2.5 py-1 text-xs font-medium text-zinc-200 transition-colors shadow"
               title="Stop Camera"
             >
               <CameraOff className="h-3.5 w-3.5 text-rose-400" />
               <span>Stop Cam</span>
-            </button>
+            </Button>
           </div>
         </div>
       )}

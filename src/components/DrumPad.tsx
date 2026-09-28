@@ -1,5 +1,6 @@
 import React from 'react';
 import { DrumInfo, HitRating } from '../types';
+import { Button } from '@/components/ui/button';
 
 interface DrumPadProps {
   drum: DrumInfo;
@@ -65,9 +66,10 @@ export const DrumPad: React.FC<DrumPadProps> = ({
       )}
 
       {/* Main Drum / Cymbal Body */}
-      <button
+      <Button
         id={`drum-pad-${drum.id}`}
         type="button"
+        variant="ghost"
         onClick={onClick}
         style={{
           boxShadow: isHit
@@ -129,7 +131,7 @@ export const DrumPad: React.FC<DrumPadProps> = ({
             }}
           />
         </div>
-      </button>
+      </Button>
     </div>
   );
 };

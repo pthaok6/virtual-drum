@@ -3,6 +3,9 @@ import { RhythmChallenge, ScreenType } from '../types';
 import { CHALLENGES } from '../data/challenges';
 import { audioEngine } from '../services/audio';
 import { ArrowLeft, Play, Square, Award, Music, Flame, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 
 interface ChallengeSelectScreenProps {
   onNavigate: (screen: ScreenType) => void;
@@ -65,21 +68,21 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
     switch (difficulty) {
       case 'Easy':
         return (
-          <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/15 px-2.5 text-xs font-semibold text-emerald-400">
             Easy
-          </span>
+          </Badge>
         );
       case 'Medium':
         return (
-          <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
+          <Badge variant="outline" className="border-amber-500/30 bg-amber-500/15 px-2.5 text-xs font-semibold text-amber-400">
             Medium
-          </span>
+          </Badge>
         );
       case 'Hard':
         return (
-          <span className="rounded-full bg-rose-500/15 border border-rose-500/30 px-2.5 py-0.5 text-xs font-semibold text-rose-400">
+          <Badge variant="outline" className="border-rose-500/30 bg-rose-500/15 px-2.5 text-xs font-semibold text-rose-400">
             Hard
-          </span>
+          </Badge>
         );
     }
   };
@@ -88,7 +91,10 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
     <div className="flex flex-col min-h-[calc(100vh-4rem)] max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full">
       {/* Header with Back button */}
       <div className="flex items-center gap-3 mb-6 pb-4 border-b border-zinc-800">
-        <button
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
           onClick={() => {
             stopPreview();
             onNavigate('home');
@@ -97,7 +103,7 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Home</span>
-        </button>
+        </Button>
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
             Rhythm Challenge Selection
@@ -115,10 +121,18 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
           const isPreviewing = previewingId === challenge.id;
 
           return (
-            <div
+            <Card
               key={challenge.id}
               onClick={() => setSelectedId(challenge.id)}
-              className={`group relative rounded-2xl border p-5 sm:p-6 transition-all duration-150 cursor-pointer flex flex-col justify-between ${
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setSelectedId(challenge.id);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              className={`group relative cursor-pointer gap-0 rounded-2xl border py-0 text-zinc-100 transition-all duration-150 ${
                 isSelected
                   ? 'border-amber-500/60 bg-gradient-to-b from-amber-950/20 via-zinc-900 to-zinc-950 shadow-xl shadow-amber-950/20 scale-[1.01]'
                   : 'border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70'
@@ -126,19 +140,19 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
             >
               {/* Selected indicator check */}
               {isSelected && (
-                <div className="absolute top-4 right-4 flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                <Badge variant="outline" className="absolute right-4 top-4 border-amber-500/20 bg-amber-500/10 text-[11px] font-bold text-amber-400">
                   <Sparkles className="h-3 w-3" />
                   <span>Selected</span>
-                </div>
+                </Badge>
               )}
 
-              <div>
+              <CardContent className="p-5 pb-4 sm:p-6 sm:pb-4">
                 {/* Header row: Difficulty & BPM */}
                 <div className="flex items-center gap-2 mb-3">
                   {getDifficultyBadge(challenge.difficulty)}
-                  <span className="rounded bg-zinc-800 px-2 py-0.5 text-xs font-mono text-zinc-300">
+                  <Badge variant="secondary" className="rounded bg-zinc-800 px-2 font-mono text-xs text-zinc-300">
                     {challenge.bpm} BPM
-                  </span>
+                  </Badge>
                   <span className="text-xs text-zinc-400">
                     {challenge.notes.length} guided hits
                   </span>
@@ -156,12 +170,14 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
                 <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4">
                   {challenge.description}
                 </p>
-              </div>
+              </CardContent>
 
               {/* Action row: Audio sample preview & Select button */}
-              <div className="pt-4 border-t border-zinc-800/80 flex items-center justify-between gap-3">
-                <button
+              <CardFooter className="flex items-center justify-between gap-3 border-t border-zinc-800/80 bg-transparent p-5 pt-4 sm:p-6 sm:pt-4">
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={(e) => handleTogglePreview(challenge, e)}
                   className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition-colors ${
                     isPreviewing
@@ -171,24 +187,26 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
                 >
                   {isPreviewing ? <Square className="h-3.5 w-3.5 fill-current" /> : <Music className="h-3.5 w-3.5" />}
                   <span>{isPreviewing ? 'Stop Sample' : 'Sample Beat'}</span>
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  size="sm"
                   onClick={() => handleStartGame(challenge)}
                   className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-1.5 text-xs font-bold text-zinc-950 shadow-md shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all"
                 >
                   <Play className="h-3.5 w-3.5 fill-current" />
                   <span>Play Challenge</span>
-                </button>
-              </div>
-            </div>
+                </Button>
+              </CardFooter>
+            </Card>
           );
         })}
       </div>
 
       {/* Primary Play Banner */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-md">
+      <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/60 py-0 text-zinc-100 backdrop-blur-md">
+        <CardContent className="flex flex-col items-center justify-between gap-4 p-4 sm:flex-row sm:p-5">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
             Ready to perform
@@ -198,15 +216,17 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
           </h2>
         </div>
 
-        <button
+        <Button
           id="challenge-start-btn"
+          size="lg"
           onClick={() => handleStartGame(selectedChallenge)}
           className="flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-3 text-sm font-bold text-zinc-950 shadow-lg shadow-amber-500/25 hover:scale-105 active:scale-95 transition-all"
         >
           <Play className="h-4 w-4 fill-current" />
           <span>Launch Rhythm Challenge</span>
-        </button>
-      </div>
+        </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };

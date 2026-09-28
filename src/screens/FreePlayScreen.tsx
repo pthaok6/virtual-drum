@@ -16,6 +16,12 @@ import {
   Sliders,
   Sparkles,
 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 
 interface FreePlayScreenProps {
   onNavigate: (screen: ScreenType) => void;
@@ -146,14 +152,17 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
       {/* Top HUD */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-800">
         <div className="flex items-center gap-3">
-          <button
+          <Button
             id="free-play-exit-btn"
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => onNavigate('home')}
             className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Exit to Home</span>
-          </button>
+          </Button>
 
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
@@ -166,22 +175,25 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
         {/* Quick HUD Metrics & Controls */}
         <div className="flex items-center gap-3 sm:gap-4">
           {/* Combo counter */}
-          <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-amber-400">
-            <Flame className={`h-4 w-4 ${combo > 0 ? 'animate-bounce' : ''}`} />
-            <div className="flex flex-col">
+          <Card className="gap-0 rounded-xl border border-amber-500/20 bg-amber-500/10 py-0 text-amber-400">
+            <CardContent className="flex items-center gap-2 px-3 py-1">
+              <Flame className={`h-4 w-4 ${combo > 0 ? 'animate-bounce' : ''}`} />
+              <div className="flex flex-col">
               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500/80 -mb-1">
                 Combo
               </span>
               <span className="text-sm font-black font-mono">
                 {combo} <span className="text-[10px] text-zinc-400 font-normal">/ max {maxCombo}</span>
               </span>
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Last Hit Indicator */}
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-300">
-            <Zap className="h-4 w-4 text-zinc-400" />
-            <div className="flex flex-col">
+          <Card className="hidden gap-0 rounded-xl border border-zinc-800 bg-zinc-900/80 py-0 text-zinc-300 sm:flex">
+            <CardContent className="flex items-center gap-2 px-3 py-1">
+              <Zap className="h-4 w-4 text-zinc-400" />
+              <div className="flex flex-col">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 -mb-1">
                 Last Hit
               </span>
@@ -191,36 +203,44 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
               >
                 {lastDrumObj ? lastDrumObj.name : 'None'}
               </span>
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Volume control */}
           <div className="flex items-center gap-2 bg-zinc-900 rounded-xl border border-zinc-800 px-3 py-1">
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => onUpdateSettings({ volume: settings.volume === 0 ? 0.85 : 0 })}
-              className="text-zinc-400 hover:text-white"
+              className="text-zinc-400 hover:bg-zinc-800 hover:text-white"
+              aria-label={settings.volume === 0 ? 'Unmute' : 'Mute'}
             >
               {settings.volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={settings.volume}
-              onChange={(e) => onUpdateSettings({ volume: parseFloat(e.target.value) })}
-              className="h-1.5 w-16 sm:w-20 accent-rose-500 cursor-pointer bg-zinc-800 rounded-lg"
+            </Button>
+            <Slider
+              min={0}
+              max={1}
+              step={0.05}
+              value={[settings.volume]}
+              onValueChange={(value) => onUpdateSettings({ volume: Array.isArray(value) ? value[0] : value })}
+              className="w-16 cursor-pointer sm:w-20 [&_[data-slot=slider-range]]:bg-rose-500 [&_[data-slot=slider-track]]:bg-zinc-800"
+              aria-label="Master volume"
             />
           </div>
 
           {/* Settings button */}
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
             onClick={onOpenSettings}
             className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white"
             title="Settings"
           >
             <Sliders className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -255,32 +275,32 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
           />
 
           {/* Tips Bar */}
-          <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-3 flex flex-wrap items-center justify-between text-xs text-zinc-400 gap-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-              <span>Tip: Keep your index fingertips visible, then move one onto a drum to play it.</span>
-            </div>
-            <span className="font-mono text-zinc-500 text-[11px]">Total Hits: {totalHits}</span>
-          </div>
+          <Alert className="flex flex-wrap items-center justify-between gap-2 border-zinc-800/80 bg-zinc-900/50 p-3 text-xs text-zinc-400">
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <AlertDescription className="col-start-2 text-xs text-zinc-400">
+              Tip: Keep your index fingertips visible, then move one onto a drum to play it.
+            </AlertDescription>
+            <span className="ml-auto font-mono text-[11px] text-zinc-500">Total Hits: {totalHits}</span>
+          </Alert>
         </div>
 
         {/* Right: Studio Drum Pad Controller Console */}
         <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-md p-5 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-4">
+          <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/60 py-0 text-zinc-100 shadow-xl backdrop-blur-md">
+            <CardHeader className="mb-4 flex-row items-center justify-between border-b border-zinc-800 p-5 pb-3">
               <div>
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider">
                   Drum Console
                 </h2>
                 <p className="text-[11px] text-zinc-400">Tactile drum pads with real-time feedback</p>
               </div>
-              <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-[10px] font-mono text-zinc-300">
+              <Badge variant="secondary" className="rounded-md bg-zinc-800 px-2 font-mono text-[10px] text-zinc-300">
                 5 DRUMS
-              </span>
-            </div>
+              </Badge>
+            </CardHeader>
 
             {/* Drum Pads Grid */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 justify-items-center">
+            <CardContent className="grid grid-cols-2 justify-items-center gap-3 px-5 sm:gap-4">
               {/* Snare (Top Left) */}
               <div className="col-span-1">
                 <DrumPad
@@ -335,19 +355,22 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
                   size="sm"
                 />
               </div>
-            </div>
+            </CardContent>
 
             {/* Quick Keyboard Reference */}
-            <div className="mt-5 pt-3 border-t border-zinc-800/80">
+            <Separator className="mt-5 bg-zinc-800/80" />
+            <CardContent className="px-5 pb-5 pt-3">
               <span className="text-[11px] font-bold text-zinc-400 block mb-2">
                 Physical Keyboard Shortcuts
               </span>
               <div className="grid grid-cols-5 gap-1.5 text-center">
                 {DRUMS.map((d) => (
-                  <div
+                  <Button
                     key={d.id}
+                    type="button"
+                    variant="outline"
                     onClick={() => handleDrumHit(d.id)}
-                    className="flex flex-col items-center p-1.5 rounded-lg border border-zinc-800 bg-zinc-950/80 hover:border-zinc-700 cursor-pointer transition-colors"
+                    className="h-auto min-w-0 flex-col gap-0 rounded-lg border-zinc-800 bg-zinc-950/80 p-1.5 hover:border-zinc-700 hover:bg-zinc-900"
                   >
                     <span className="font-mono text-xs font-bold text-amber-400">
                       {d.key}
@@ -355,11 +378,11 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
                     <span className="text-[9px] text-zinc-400 truncate w-full">
                       {d.name}
                     </span>
-                  </div>
+                  </Button>
                 ))}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

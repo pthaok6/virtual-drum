@@ -13,6 +13,10 @@ import { DrumPad } from '../components/DrumPad';
 import { cameraTracker, TrackingState } from '../services/cameraTracker';
 import { audioEngine } from '../services/audio';
 import { ArrowLeft, Flame, Target } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 interface RhythmGameScreenProps {
   challenge: RhythmChallenge;
@@ -257,57 +261,59 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-3">
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => onNavigate('challenge-select')}
             className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Abort</span>
-          </button>
+          </Button>
           <h1 className="flex items-center gap-2 text-base font-bold tracking-tight text-white sm:text-lg">
             <span>{challenge.title}</span>
-            <span className="rounded border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-mono text-xs font-normal text-amber-400">
+            <Badge variant="outline" className="rounded border-amber-500/20 bg-amber-500/10 px-2 font-mono text-xs font-normal text-amber-400">
               Guided
-            </span>
+            </Badge>
           </h1>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
-          <div className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1">
+          <Card className="gap-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-100">
             <span className="text-[10px] font-bold uppercase text-zinc-500">Score</span>
             <span className="font-mono text-base font-black text-white sm:text-lg">
               {score.toLocaleString()}
             </span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-400">
+          </Card>
+          <Card className="flex-row items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-400">
             <Flame className="h-4 w-4" />
             <div className="flex flex-col">
               <span className="text-[9px] font-bold uppercase text-amber-500/80">Combo</span>
               <span className="font-mono text-sm font-black">{combo}</span>
             </div>
-          </div>
-          <div className="hidden flex-col rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 sm:flex">
+          </Card>
+          <Card className="hidden gap-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-100 sm:flex">
             <span className="text-[10px] font-bold uppercase text-zinc-500">Accuracy</span>
             <span className="font-mono text-sm font-black text-emerald-400">{accuracy}%</span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-300">
+          </Card>
+          <Card className="flex-row items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-300">
             <Target className="h-3.5 w-3.5 text-rose-400" />
             <span className="font-mono text-xs font-bold">
               {Math.min(currentNoteIndex + 1, totalNotes)}/{totalNotes}
             </span>
-          </div>
+          </Card>
         </div>
       </div>
 
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-900">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-200"
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
+      <Progress
+        value={progressPercent}
+        aria-label="Challenge progress"
+        className="mt-2 gap-0 [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-zinc-900 [&_[data-slot=progress-indicator]]:bg-gradient-to-r [&_[data-slot=progress-indicator]]:from-rose-500 [&_[data-slot=progress-indicator]]:to-amber-500"
+      />
 
       <div className="mt-3 flex flex-1 flex-col gap-4">
-        <div className="flex min-h-20 items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/70 px-4 py-3">
+        <Card className="min-h-20 flex-row items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-900/70 px-4 py-3 text-zinc-100">
           {currentDrum ? (
             <>
               <div className="flex items-center gap-3">
@@ -332,7 +338,7 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
                 </div>
               </div>
               {lastHitFeedback && (
-                <span
+                <Badge
                   className={`rounded-full px-3 py-1 text-xs font-black uppercase ${
                     lastHitFeedback.rating === 'perfect'
                       ? 'bg-emerald-400 text-zinc-950'
@@ -340,13 +346,13 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
                   }`}
                 >
                   {lastHitFeedback.rating === 'perfect' ? 'Correct' : 'Wrong drum'}
-                </span>
+                </Badge>
               )}
             </>
           ) : (
             <div className="w-full text-center font-bold text-emerald-400">Challenge complete!</div>
           )}
-        </div>
+        </Card>
 
         <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-12">
           <div className="flex flex-col lg:col-span-8">
@@ -372,13 +378,13 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
             />
           </div>
 
-          <div className="flex flex-col justify-between rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 lg:col-span-4">
-            <div className="mb-2 flex items-center justify-between border-b border-zinc-800 pb-2">
+          <Card className="justify-between gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 py-0 text-zinc-100 lg:col-span-4">
+            <CardHeader className="mb-2 flex-row items-center justify-between border-b border-zinc-800 p-4 pb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">Guided Drums</span>
               <span className="text-[10px] text-zinc-500">Tap / Camera</span>
-            </div>
+            </CardHeader>
 
-            <div className="grid grid-cols-2 justify-items-center gap-2">
+            <CardContent className="grid grid-cols-2 justify-items-center gap-2 px-4">
               {(['snare', 'kick', 'hihat', 'crash'] as DrumType[]).map((drumId) => {
                 const drum = DRUMS.find((item) => item.id === drumId)!;
                 return (
@@ -405,23 +411,23 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
                   size="sm"
                 />
               </div>
-            </div>
+            </CardContent>
 
-            <div className="mt-3 grid grid-cols-3 gap-1 border-t border-zinc-800 pt-2 text-center">
-              <div className="rounded border border-zinc-800 bg-zinc-950/60 p-1">
+            <CardContent className="mt-3 grid grid-cols-3 gap-1 border-t border-zinc-800 p-4 pt-2 text-center">
+              <Card className="gap-0 rounded border border-zinc-800 bg-zinc-950/60 p-1 py-1 text-zinc-100">
                 <span className="block text-[9px] font-bold text-emerald-400">CORRECT</span>
                 <span className="font-mono text-xs font-bold text-white">{correctHits}</span>
-              </div>
-              <div className="rounded border border-zinc-800 bg-zinc-950/60 p-1">
+              </Card>
+              <Card className="gap-0 rounded border border-zinc-800 bg-zinc-950/60 p-1 py-1 text-zinc-100">
                 <span className="block text-[9px] font-bold text-rose-400">WRONG</span>
                 <span className="font-mono text-xs font-bold text-white">{mistakes}</span>
-              </div>
-              <div className="rounded border border-zinc-800 bg-zinc-950/60 p-1">
+              </Card>
+              <Card className="gap-0 rounded border border-zinc-800 bg-zinc-950/60 p-1 py-1 text-zinc-100">
                 <span className="block text-[9px] font-bold text-amber-400">MAX COMBO</span>
                 <span className="font-mono text-xs font-bold text-white">{maxCombo}</span>
-              </div>
-            </div>
-          </div>
+              </Card>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

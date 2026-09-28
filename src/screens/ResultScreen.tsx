@@ -13,6 +13,9 @@ import {
   Sparkles,
   CheckCircle2,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ResultScreenProps {
   result: GameResult;
@@ -90,10 +93,10 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] max-w-3xl mx-auto px-4 sm:px-6 py-8 w-full animate-fade-in">
       {/* Trophy Badge */}
-      <div className="flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-xs font-semibold text-amber-400 mb-4">
+      <Badge variant="outline" className="mb-4 h-auto gap-2 border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-xs font-semibold text-amber-400">
         <Trophy className="h-4 w-4" />
         <span>Rhythm Challenge Finished</span>
-      </div>
+      </Badge>
 
       {/* Header */}
       <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase text-center mb-1">
@@ -104,7 +107,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       </p>
 
       {/* Main Score & Rank Card */}
-      <div className="w-full rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/80 to-zinc-950 p-6 sm:p-8 backdrop-blur-xl shadow-2xl mb-6">
+      <Card className="mb-6 w-full gap-0 rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/80 to-zinc-950 p-6 py-6 text-zinc-100 shadow-2xl backdrop-blur-xl sm:p-8 sm:py-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-b border-zinc-800">
           <div className="flex items-center gap-4">
             {getRankBadge(result.rank)}
@@ -141,7 +144,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-6">
           {/* Accuracy */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 flex flex-col">
+          <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 py-3.5 text-zinc-100">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
               <Target className="h-3 w-3 text-emerald-400" />
               Accuracy
@@ -149,10 +152,10 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400 mt-1">
               {result.accuracy}%
             </span>
-          </div>
+          </Card>
 
           {/* Max Combo */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 flex flex-col">
+          <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 py-3.5 text-zinc-100">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
               <Flame className="h-3 w-3 text-amber-400" />
               Max Combo
@@ -160,10 +163,10 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             <span className="text-xl sm:text-2xl font-black font-mono text-amber-400 mt-1">
               {result.maxCombo}x
             </span>
-          </div>
+          </Card>
 
           {/* Perfect Hits */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 flex flex-col">
+          <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 py-3.5 text-zinc-100">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
               <Sparkles className="h-3 w-3 text-amber-300" />
               Perfect Hits
@@ -171,10 +174,10 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             <span className="text-xl sm:text-2xl font-black font-mono text-white mt-1">
               {result.perfectHits}
             </span>
-          </div>
+          </Card>
 
           {/* Misses */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 flex flex-col">
+          <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 py-3.5 text-zinc-100">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3 text-rose-400" />
               Misses
@@ -182,44 +185,49 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             <span className="text-xl sm:text-2xl font-black font-mono text-rose-400 mt-1">
               {result.misses}
             </span>
-          </div>
+          </Card>
         </div>
 
         {/* Evaluation Message */}
-        <div className="mt-6 rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-4 text-center">
+        <CardContent className="mt-6 rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-4 text-center">
           <h3 className="text-sm font-bold text-white mb-1">{feedback.headline}</h3>
           <p className="text-xs text-zinc-400">{feedback.body}</p>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Primary Actions: Play Again, Choose Another Challenge, Back to Home */}
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
-        <button
+        <Button
           id="result-action-play-again"
+          size="lg"
           onClick={onPlayAgain}
           className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-lg shadow-amber-500/25 hover:scale-105 active:scale-95 transition-all"
         >
           <RotateCcw className="h-4 w-4 stroke-[2.5]" />
           <span>Play Again</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           id="result-action-choose-challenge"
+          variant="secondary"
+          size="lg"
           onClick={onChooseAnother}
           className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800/80 px-6 py-3.5 text-sm font-semibold text-white hover:bg-zinc-700 active:scale-95 transition-all"
         >
           <ListMusic className="h-4 w-4" />
           <span>Choose Another Challenge</span>
-        </button>
+        </Button>
 
-        <button
+        <Button
           id="result-action-back-home"
+          variant="outline"
+          size="lg"
           onClick={onBackToHome}
           className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-3.5 text-sm font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all"
         >
           <Home className="h-4 w-4" />
           <span>Home</span>
-        </button>
+        </Button>
       </div>
     </div>
   );

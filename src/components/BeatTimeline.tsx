@@ -1,6 +1,8 @@
 import React from 'react';
 import { DRUMS } from '../data/drums';
 import { BeatNote, DrumType, HitRating } from '../types';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 
 interface BeatTimelineProps {
   notes: BeatNote[];
@@ -33,21 +35,21 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
   );
 
   return (
-    <div className="relative w-full rounded-xl border border-zinc-800 bg-zinc-950/90 backdrop-blur-md p-3 shadow-xl overflow-hidden">
+    <Card className="relative block w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/90 p-3 py-3 text-zinc-100 shadow-xl backdrop-blur-md">
       {/* Background timeline grid bars */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
             Rhythm Conveyor
           </span>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-300">
+          <Badge variant="secondary" className="rounded bg-zinc-800 px-1.5 font-mono text-[10px] text-zinc-300">
             {bpm} BPM
-          </span>
+          </Badge>
         </div>
 
         {/* Real-time Hit Rating Feedback Tag */}
         {lastHitFeedback && (
-          <div
+          <Badge
             className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-xs uppercase tracking-wider animate-scale ${
               lastHitFeedback.rating === 'perfect'
                 ? 'bg-amber-400 text-zinc-950 shadow-[0_0_15px_rgba(251,191,36,0.6)]'
@@ -60,7 +62,7 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
             {lastHitFeedback.combo > 1 && (
               <span className="text-[10px] opacity-80">x{lastHitFeedback.combo}</span>
             )}
-          </div>
+          </Badge>
         )}
       </div>
 
@@ -75,9 +77,9 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
           className="absolute top-0 bottom-0 w-1 bg-gradient-to-b from-rose-400 via-amber-300 to-rose-400 z-20 shadow-[0_0_12px_rgba(244,63,94,0.8)]"
         >
           {/* Target Zone Header Pill */}
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 rounded-full bg-amber-400 px-1.5 py-0.2 text-[8px] font-black text-zinc-950 uppercase tracking-tighter">
+          <Badge className="absolute -top-1 left-1/2 h-4 -translate-x-1/2 rounded-full bg-amber-400 px-1.5 py-0 text-[8px] font-black uppercase tracking-tighter text-zinc-950">
             HIT
-          </div>
+          </Badge>
           {/* Target Circle reticle */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full border-2 border-amber-300/80 pointer-events-none" />
         </div>
@@ -139,6 +141,6 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
           ))}
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
