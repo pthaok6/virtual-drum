@@ -64,6 +64,7 @@ export interface GameResult {
   misses: number;
   stars: number;
   rank: 'S' | 'A' | 'B' | 'C' | 'D';
+  replayEvents?: { drum: DrumType; rating: HitRating; timeMs: number }[];
 }
 
 export interface AppSettings {

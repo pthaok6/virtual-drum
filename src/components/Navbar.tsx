@@ -1,6 +1,7 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { ScreenType } from '../types';
-import { Volume2, VolumeX, Settings, Camera, Music, Sparkles } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Camera, Music, Bell, UserRound, LogIn } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -22,9 +23,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onVolumeChange,
   isCameraActive,
 }) => {
+  const location = useLocation();
   return (
     <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-y-2 px-4 py-2 sm:px-6 lg:flex-nowrap lg:px-8">
         {/* Brand */}
         <Button
           id="nav-brand"
@@ -52,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </Button>
 
         {/* Center Nav Links */}
-        <nav className="flex items-center gap-1 sm:gap-2">
+        <nav className="order-3 flex w-full items-center gap-1 overflow-x-auto border-t border-zinc-800/60 pt-2 lg:order-none lg:w-auto lg:border-0 lg:pt-0 sm:gap-2">
           <Button
             id="nav-link-home"
             variant="ghost"
@@ -92,10 +94,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             Rhythm Challenge
           </Button>
+          <Link to="/#leaderboard" className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900 hover:text-white sm:text-sm">Leaderboard</Link>
+          <Link to="/rooms" className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium sm:text-sm ${location.pathname.startsWith('/rooms') ? 'bg-rose-500/20 text-rose-300' : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'}`}>Rooms</Link>
         </nav>
 
         {/* Right Tools */}
         <div className="flex items-center gap-2 sm:gap-4">
+          <Link to="/notifications" aria-label="Thông báo" title="Thông báo" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><Bell className="h-4 w-4" /></Link>
+          <Link to="/profile/you" aria-label="Profile" title="Profile" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><UserRound className="h-4 w-4" /></Link>
+          <Link to="/login" aria-label="Đăng nhập" title="Đăng nhập" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><LogIn className="h-4 w-4" /></Link>
           {/* Camera Status Badge */}
           <Badge
             id="nav-camera-badge"

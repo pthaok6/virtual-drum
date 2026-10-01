@@ -12,6 +12,8 @@ import {
   Award,
   Sparkles,
   CheckCircle2,
+  Share2,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,8 @@ interface ResultScreenProps {
   onPlayAgain: () => void;
   onChooseAnother: () => void;
   onBackToHome: () => void;
+  onShareImage: () => void;
+  onShareProfile: () => void;
 }
 
 export const ResultScreen: React.FC<ResultScreenProps> = ({
@@ -29,6 +33,8 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   onPlayAgain,
   onChooseAnother,
   onBackToHome,
+  onShareImage,
+  onShareProfile,
 }) => {
   useEffect(() => {
     // Launch celebratory confetti if completed with good score
@@ -196,6 +202,10 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       </Card>
 
       {/* Primary Actions: Play Again, Choose Another Challenge, Back to Home */}
+      <div className="mb-3 grid w-full gap-3 sm:grid-cols-2">
+        <Button onClick={onShareImage} size="lg" className="w-full gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 font-bold text-zinc-950 hover:opacity-90"><ImageIcon className="h-4 w-4" /> Chia sẻ ảnh ra ngoài</Button>
+        <Button onClick={onShareProfile} variant="outline" size="lg" className="w-full gap-2 rounded-xl border-zinc-700 bg-zinc-800 font-bold text-white hover:bg-zinc-700"><Share2 className="h-4 w-4" /> Chia sẻ lên profile</Button>
+      </div>
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
         <Button
           id="result-action-play-again"

@@ -72,6 +72,8 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
 
   const noteIndexRef = useRef(0);
   const finishedRef = useRef(false);
+  const firstHitAtRef = useRef<number | null>(null);
+  const replayEventsRef = useRef<NonNullable<GameResult['replayEvents']>>([]);
   const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statsRef = useRef<ChallengeStats>({
     score: 0,
@@ -129,6 +131,7 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
       misses: finalStats.misses,
       stars,
       rank,
+      replayEvents: replayEventsRef.current,
     });
   }
 
@@ -145,6 +148,8 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
 
     const isCorrect = expectedNote.drum === drum;
     const rating: HitRating = isCorrect ? 'perfect' : 'miss';
+    if (firstHitAtRef.current === null) firstHitAtRef.current = Date.now();
+    replayEventsRef.current.push({ drum, rating, timeMs: Date.now() - firstHitAtRef.current });
 
     if (isCorrect) {
       const currentStats = statsRef.current;

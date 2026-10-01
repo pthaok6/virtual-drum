@@ -13,6 +13,7 @@ interface HomeScreenProps {
   onOpenSettings: () => void;
   isCameraActive: boolean;
   onToggleCamera: () => void;
+  leaderboard: React.ReactNode;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -20,6 +21,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onOpenSettings,
   isCameraActive,
   onToggleCamera,
+  leaderboard,
 }) => {
   const [activePreviewDrum, setActivePreviewDrum] = React.useState<DrumType | null>(null);
 
@@ -170,6 +172,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </Card>
         </div>
       </div>
+      {leaderboard}
     </div>
   );
 };
