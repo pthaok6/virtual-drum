@@ -83,14 +83,11 @@ const SEED_RECORDS: PlayRecord[] = [
   },
 ];
 
-export function calculateUserLevel(totalScore: number): number {
-  if (totalScore <= 0) return 1;
-  return Math.floor(Math.sqrt(totalScore / 500)) + 1;
-}
-
-export function generateDefaultAvatar(seed: string): string {
-  return `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(seed)}`;
-}
+export { calculateUserLevel, generateDefaultAvatar } from './authUtils';
+import { calculateUserLevel, generateDefaultAvatar } from './authUtils';
+import { getSupabaseConfig } from './supabase';
+import { SupabaseAuthAdapter } from './supabaseAuth';
+import { SupabaseStorageService } from './supabaseStorage';
 
 /**
  * LocalStorage implementation of IAuthAdapter
@@ -300,6 +297,75 @@ export class LocalStorageService implements IStorageService {
   }
 }
 
-// Singleton instances with default adapters
-export const authAdapter: IAuthAdapter = new LocalStorageAuthAdapter();
-export const storageService: IStorageService = new LocalStorageService();
+/**
+ * Composite Auth Adapter that dynamically delegates to Supabase when configured,
+ * or falls back to LocalStorage.
+ */
+export class CompositeAuthAdapter implements IAuthAdapter {
+  private localAdapter = new LocalStorageAuthAdapter();
+  private supabaseAdapter = new SupabaseAuthAdapter();
+
+  public getActiveAdapter(): IAuthAdapter {
+    const config = getSupabaseConfig();
+    return config.isConfigured ? this.supabaseAdapter : this.localAdapter;
+  }
+
+  public async getCurrentUser(): Promise<UserProfile | null> {
+    return this.getActiveAdapter().getCurrentUser();
+  }
+
+  public async login(email: string, password: string): Promise<UserProfile> {
+    return this.getActiveAdapter().login(email, password);
+  }
+
+  public async register(email: string, username: string, password: string): Promise<UserProfile> {
+    return this.getActiveAdapter().register(email, username, password);
+  }
+
+  public async logout(): Promise<void> {
+    return this.getActiveAdapter().logout();
+  }
+
+  public async updateUserStats(userId: string, addedScore: number): Promise<UserProfile> {
+    return this.getActiveAdapter().updateUserStats(userId, addedScore);
+  }
+}
+
+/**
+ * Composite Storage Service that delegates to Supabase for cloud leaderboard / records,
+ * and falls back to LocalStorage.
+ */
+export class CompositeStorageService implements IStorageService {
+  private localService = new LocalStorageService();
+  private supabaseService = new SupabaseStorageService();
+
+  public getActiveService(): IStorageService {
+    const config = getSupabaseConfig();
+    return config.isConfigured ? this.supabaseService : this.localService;
+  }
+
+  public async savePlayRecord(record: Omit<PlayRecord, 'id' | 'timestamp'>): Promise<PlayRecord> {
+    return this.getActiveService().savePlayRecord(record);
+  }
+
+  public async getLeaderboard(trackId?: string, limit: number = 20): Promise<LeaderboardEntry[]> {
+    return this.getActiveService().getLeaderboard(trackId, limit);
+  }
+
+  public async getPersonalBest(userId: string, trackId: string): Promise<PersonalBest | null> {
+    return this.getActiveService().getPersonalBest(userId, trackId);
+  }
+
+  public async getAllPersonalBests(userId: string): Promise<Record<string, PersonalBest>> {
+    return this.getActiveService().getAllPersonalBests(userId);
+  }
+
+  public async getUserHistory(userId: string): Promise<PlayRecord[]> {
+    return this.getActiveService().getUserHistory(userId);
+  }
+}
+
+// Singleton instances with dynamic Supabase / LocalStorage adapters
+export const authAdapter: IAuthAdapter = new CompositeAuthAdapter();
+export const storageService: IStorageService = new CompositeStorageService();
+

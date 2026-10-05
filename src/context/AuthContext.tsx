@@ -1,6 +1,13 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { UserProfile } from '../types';
 import { authAdapter, generateDefaultAvatar } from '../services/storage';
+import {
+  getSupabaseConfig,
+  getSupabaseClient,
+  saveCustomSupabaseConfig,
+  testSupabaseConnection,
+  SupabaseConfigInfo,
+} from '../services/supabase';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -13,42 +20,81 @@ interface AuthContextType {
   register: (email: string, username: string, password: string) => Promise<UserProfile>;
   logout: () => Promise<void>;
   updateScore: (addedScore: number) => Promise<UserProfile | null>;
+  // Supabase status & configuration
+  isSupabaseConfigured: boolean;
+  supabaseConfig: SupabaseConfigInfo;
+  saveSupabaseConfig: (url: string, anonKey: string) => Promise<void>;
+  testSupabase: (
+    url?: string,
+    anonKey?: string
+  ) => Promise<{ success: boolean; message: string; tableProfilesExists: boolean }>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+function createDefaultGuestUser(): UserProfile {
+  return {
+    id: 'guest-player',
+    email: 'guest@virtualdrum.pro',
+    username: 'Drummer Pro',
+    avatarUrl: generateDefaultAvatar('Drummer Pro'),
+    level: 1,
+    totalScore: 0,
+    createdAt: Date.now(),
+  };
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfigInfo>(getSupabaseConfig());
 
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const current = await authAdapter.getCurrentUser();
-        if (current) {
-          setUser(current);
-        } else {
-          // Initialize a friendly default guest user so the player immediately has level/stats
-          const guest: UserProfile = {
-            id: 'guest-player',
-            email: 'guest@virtualdrum.pro',
-            username: 'Drummer Pro',
-            avatarUrl: generateDefaultAvatar('Drummer Pro'),
-            level: 1,
-            totalScore: 0,
-            createdAt: Date.now(),
-          };
-          setUser(guest);
-        }
-      } catch (err) {
-        console.warn('Failed to load user state:', err);
-      } finally {
-        setIsLoading(false);
+  const loadUser = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const current = await authAdapter.getCurrentUser();
+      if (current) {
+        setUser(current);
+      } else {
+        setUser(createDefaultGuestUser());
       }
+    } catch (err) {
+      console.warn('Failed to load user state:', err);
+      setUser(createDefaultGuestUser());
+    } finally {
+      setIsLoading(false);
     }
-    loadUser();
   }, []);
+
+  // Initial user load
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
+
+  // Setup Supabase auth state change listener when configured
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.user) {
+          const current = await authAdapter.getCurrentUser();
+          if (current) setUser(current);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(createDefaultGuestUser());
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabaseConfig]);
 
   const openAuthModal = () => setIsAuthModalOpen(true);
   const closeAuthModal = () => setIsAuthModalOpen(false);
@@ -79,16 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await authAdapter.logout();
-    const guest: UserProfile = {
-      id: 'guest-player',
-      email: 'guest@virtualdrum.pro',
-      username: 'Guest Drummer',
-      avatarUrl: generateDefaultAvatar('Guest Drummer'),
-      level: 1,
-      totalScore: 0,
-      createdAt: Date.now(),
-    };
-    setUser(guest);
+    setUser(createDefaultGuestUser());
   };
 
   const updateScore = async (addedScore: number): Promise<UserProfile | null> => {
@@ -98,7 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(updated);
       return updated;
     } catch {
-      // In guest mode fallback
+      // In guest or offline fallback
       const updated: UserProfile = {
         ...user,
         totalScore: user.totalScore + addedScore,
@@ -107,6 +144,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(updated);
       return updated;
     }
+  };
+
+  const handleSaveSupabaseConfig = async (url: string, anonKey: string) => {
+    saveCustomSupabaseConfig(url, anonKey);
+    const updated = getSupabaseConfig();
+    setSupabaseConfig(updated);
+    await loadUser();
+  };
+
+  const handleTestSupabase = async (url?: string, anonKey?: string) => {
+    return testSupabaseConnection(url, anonKey);
   };
 
   return (
@@ -122,6 +170,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         updateScore,
+        isSupabaseConfigured: supabaseConfig.isConfigured,
+        supabaseConfig,
+        saveSupabaseConfig: handleSaveSupabaseConfig,
+        testSupabase: handleTestSupabase,
+        refreshUser: loadUser,
       }}
     >
       {children}
