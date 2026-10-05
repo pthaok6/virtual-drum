@@ -1,0 +1,6 @@
+{
+  "name": "Virtual Drum",
+  "description": "Interactive browser-based drum game using webcam hand gesture tracking with Free Play and Rhythm Challenge modes.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
