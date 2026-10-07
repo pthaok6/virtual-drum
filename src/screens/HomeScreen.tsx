@@ -3,7 +3,7 @@ import { ScreenType, DrumType } from '../types';
 import { DRUMS } from '../data/drums';
 import { DrumPad } from '../components/DrumPad';
 import { audioEngine } from '../services/audio';
-import { Play, Sparkles, Camera, Hand, Music, Award, ArrowRight, Trophy } from 'lucide-react';
+import { Play, Sparkles, Camera, Hand, Music, Award, ArrowRight, Trophy, Disc3, Radio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -75,10 +75,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           variant="outline"
           size="lg"
           onClick={() => onNavigate('leaderboard')}
-          className="w-full sm:w-auto flex items-center justify-center gap-2.5 rounded-2xl border-zinc-800 bg-zinc-900/90 px-6 py-4 text-sm sm:text-base font-bold text-amber-400 hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+          className="w-full sm:w-auto flex items-center justify-center gap-2.5 rounded-2xl border-zinc-800 bg-zinc-900/90 px-5 py-4 text-sm sm:text-base font-bold text-amber-400 hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
         >
           <Trophy className="h-5 w-5" />
           <span>Leaderboard</span>
+        </Button>
+
+        <Button
+          id="hero-cta-recordings"
+          variant="outline"
+          size="lg"
+          onClick={() => onNavigate('recordings')}
+          className="w-full sm:w-auto flex items-center justify-center gap-2.5 rounded-2xl border-zinc-800 bg-zinc-900/90 px-5 py-4 text-sm sm:text-base font-bold text-rose-400 hover:bg-zinc-800 transition-all hover:scale-105 active:scale-95"
+        >
+          <Disc3 className="h-5 w-5" />
+          <span>Recordings</span>
+        </Button>
+
+        <Button
+          id="hero-cta-rooms"
+          variant="outline"
+          size="lg"
+          onClick={() => onNavigate('rooms')}
+          className="w-full sm:w-auto flex items-center justify-center gap-2.5 rounded-2xl border-purple-500/30 bg-purple-950/40 px-5 py-4 text-sm sm:text-base font-bold text-purple-300 hover:bg-purple-900/40 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-purple-900/20"
+        >
+          <Radio className="h-5 w-5 text-purple-400 animate-pulse" />
+          <span>Live Rooms</span>
         </Button>
       </div>
 

@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '../context/AuthContext';
 
 interface ResultScreenProps {
   result: GameResult;
@@ -32,6 +33,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   onBackToHome,
   onViewLeaderboard,
 }) => {
+  const { user, isAuthenticated, openAuthModal } = useAuth();
   useEffect(() => {
     // Launch celebratory confetti if completed with good score
     if (result.accuracy >= 65) {
@@ -196,6 +198,26 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           <p className="text-xs text-zinc-400">{feedback.body}</p>
         </CardContent>
       </Card>
+
+      {/* Guest Notice */}
+      {(!isAuthenticated || !user) && (
+        <div className="w-full rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 mb-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-amber-200">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="h-4 w-4 text-amber-400 shrink-0" />
+            <span>
+              Bạn đang chơi dưới tư cách <strong>Khách</strong>. Điểm số lượt chơi này không được lưu vào Bảng xếp hạng.
+            </span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={openAuthModal}
+            className="rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shrink-0 px-3 py-1 cursor-pointer"
+          >
+            Đăng nhập để lưu điểm
+          </Button>
+        </div>
+      )}
 
       {/* Primary Actions: Play Again, Choose Another Challenge, Back to Home */}
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">

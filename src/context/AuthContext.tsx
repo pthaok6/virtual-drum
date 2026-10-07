@@ -33,18 +33,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-function createDefaultGuestUser(): UserProfile {
-  return {
-    id: 'guest-player',
-    email: 'guest@virtualdrum.pro',
-    username: 'Drummer Pro',
-    avatarUrl: generateDefaultAvatar('Drummer Pro'),
-    level: 1,
-    totalScore: 0,
-    createdAt: Date.now(),
-  };
-}
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -55,14 +43,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const current = await authAdapter.getCurrentUser();
-      if (current) {
+      if (current && current.id && !current.id.startsWith('guest-')) {
         setUser(current);
       } else {
-        setUser(createDefaultGuestUser());
+        setUser(null);
       }
     } catch (err) {
       console.warn('Failed to load user state:', err);
-      setUser(createDefaultGuestUser());
+      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -84,10 +72,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
         if (session?.user) {
           const current = await authAdapter.getCurrentUser();
-          if (current) setUser(current);
+          if (current && current.id && !current.id.startsWith('guest-')) setUser(current);
         }
       } else if (event === 'SIGNED_OUT') {
-        setUser(createDefaultGuestUser());
+        setUser(null);
       }
     });
 
@@ -125,17 +113,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await authAdapter.logout();
-    setUser(createDefaultGuestUser());
+    setUser(null);
+    closeAuthModal();
   };
 
   const updateScore = async (addedScore: number): Promise<UserProfile | null> => {
-    if (!user) return null;
+    if (!user || user.id.startsWith('guest-')) return null;
     try {
       const updated = await authAdapter.updateUserStats(user.id, addedScore);
       setUser(updated);
       return updated;
     } catch {
-      // In guest or offline fallback
+      // In offline fallback
       const updated: UserProfile = {
         ...user,
         totalScore: user.totalScore + addedScore,
@@ -161,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        isAuthenticated: !!user && user.id !== 'guest-player',
+        isAuthenticated: !!user && !user.id.startsWith('guest-'),
         isLoading,
         isAuthModalOpen,
         openAuthModal,
@@ -185,7 +174,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    return {
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      isAuthModalOpen: false,
+      openAuthModal: () => {},
+      closeAuthModal: () => {},
+      login: async () => ({ id: '', email: '', username: '', avatarUrl: '', level: 1, totalScore: 0, createdAt: 0 }),
+      register: async () => ({ id: '', email: '', username: '', avatarUrl: '', level: 1, totalScore: 0, createdAt: 0 }),
+      logout: async () => {},
+      updateScore: async () => null,
+      isSupabaseConfigured: false,
+      supabaseConfig: { url: '', anonKey: '', isFromEnv: false, isConfigured: false },
+      saveSupabaseConfig: async () => {},
+      testSupabase: async () => ({ success: false, message: '', tableProfilesExists: false }),
+      refreshUser: async () => {},
+    };
   }
   return context;
 }

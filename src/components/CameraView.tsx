@@ -18,10 +18,17 @@ import {
   RotateCcw,
   Check,
   Sparkles,
+  Sun,
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+
+export interface RhythmBeatCue {
+  isHitWindow: boolean;
+  isApproaching: boolean;
+  progress: number;
+}
 
 interface CameraViewProps {
   isCameraActive: boolean;
@@ -35,6 +42,7 @@ interface CameraViewProps {
   playbackHits?: Record<DrumType, boolean>;
   onDrumClick?: (drum: DrumType) => void;
   promptedDrum?: DrumType | null;
+  rhythmBeatCues?: Record<DrumType, RhythmBeatCue>;
   mirror?: boolean;
   showHandIndicators?: boolean;
   // Layout customization controls
@@ -64,6 +72,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   playbackHits,
   onDrumClick,
   promptedDrum = null,
+  rhythmBeatCues,
   mirror = true,
   showHandIndicators = true,
   allowLayoutEditing = true,
@@ -71,6 +80,25 @@ export const CameraView: React.FC<CameraViewProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Pad Brightness Mode: 'neon' (vibrant glowing default), 'ultra' (maximum high-contrast glow), 'subtle' (minimal translucent)
+  const [padGlowMode, setPadGlowMode] = useState<'neon' | 'ultra' | 'subtle'>(() => {
+    try {
+      const saved = localStorage.getItem('virtual_drum_pad_glow_mode');
+      if (saved === 'ultra' || saved === 'subtle' || saved === 'neon') return saved;
+    } catch {}
+    return 'neon';
+  });
+
+  const toggleGlowMode = () => {
+    setPadGlowMode((prev) => {
+      const next = prev === 'neon' ? 'ultra' : prev === 'ultra' ? 'subtle' : 'neon';
+      try {
+        localStorage.setItem('virtual_drum_pad_glow_mode', next);
+      } catch {}
+      return next;
+    });
+  };
 
   // Layout State
   const [layout, setLayout] = useState<DrumLayoutMap>(() => drumLayoutService.getLayout());
@@ -344,46 +372,73 @@ export const CameraView: React.FC<CameraViewProps> = ({
             // ============================================
             // PLAY MODE PAD (TACTILE GESTURE & CLICK TARGET)
             // ============================================
+            const rhythmCue = rhythmBeatCues?.[drum.id];
+            const isRhythmHit = Boolean(rhythmCue?.isHitWindow);
+            const isRhythmApproaching = Boolean(rhythmCue?.isApproaching && !rhythmCue?.isHitWindow);
+
             const isUserHit = Boolean(hitState?.isHit);
             const isPlaybackHit = Boolean(playbackHits?.[drum.id]);
             const isFingerInside = energy > 12;
 
-            const borderCol = isUserHit
+            const borderCol = isUserHit || isRhythmHit
               ? '#ffffff'
               : isFingerInside
               ? '#38bdf8'
               : isPlaybackHit
               ? '#34d399'
-              : isPrompted
+              : isPrompted || isRhythmApproaching
               ? '#ffffff'
               : drum.color;
 
+            // Compute background and glow shadow based on padGlowMode
+            let idleBg: string;
+            let idleShadow: string;
+            let borderWidth = '2.5px';
+
+            if (padGlowMode === 'ultra') {
+              idleBg = `linear-gradient(135deg, ${drum.color}45 0%, rgba(10, 10, 16, 0.75) 100%)`;
+              idleShadow = `0 0 26px ${drum.color}, 0 0 10px ${drum.color}, inset 0 0 20px ${drum.color}40`;
+              borderWidth = '3px';
+            } else if (padGlowMode === 'subtle') {
+              idleBg = `${drum.color}15`;
+              idleShadow = `0 0 8px ${drum.color}40`;
+              borderWidth = '2px';
+            } else {
+              // 'neon' (default - vibrant glowing look)
+              idleBg = `linear-gradient(135deg, ${drum.color}28 0%, rgba(15, 15, 22, 0.6) 100%)`;
+              idleShadow = `0 0 18px ${drum.color}90, 0 0 6px ${drum.color}, inset 0 0 14px ${drum.color}28`;
+              borderWidth = '2.5px';
+            }
+
             const bgCol = isUserHit
-              ? drum.glowColor
+              ? drum.color
+              : isRhythmHit
+              ? `${drum.color}90`
               : isFingerInside
-              ? `${drum.color}55`
+              ? `${drum.color}65`
               : isPlaybackHit
-              ? `${drum.color}35`
-              : isPrompted
-              ? `${drum.color}38`
-              : 'rgba(24, 24, 27, 0.45)';
+              ? `${drum.color}45`
+              : isPrompted || isRhythmApproaching
+              ? `${drum.color}50`
+              : idleBg;
 
             const shadowStyle = isUserHit
-              ? `0 0 38px ${drum.glowColor}, inset 0 0 20px ${drum.glowColor}`
+              ? `0 0 45px #ffffff, 0 0 25px ${drum.color}, inset 0 0 25px #ffffff`
+              : isRhythmHit
+              ? `0 0 40px #ffffff, 0 0 30px ${drum.color}, inset 0 0 25px ${drum.color}`
               : isFingerInside
-              ? `0 0 25px ${drum.glowColor}, inset 0 0 15px rgba(56, 189, 248, 0.5)`
+              ? `0 0 32px ${drum.color}, 0 0 15px #38bdf8, inset 0 0 20px rgba(56, 189, 248, 0.6)`
               : isPlaybackHit
-              ? `0 0 22px rgba(52, 211, 153, 0.7), inset 0 0 12px rgba(52, 211, 153, 0.3)`
-              : isPrompted
-              ? `0 0 28px ${drum.glowColor}, inset 0 0 22px ${drum.glowColor}`
-              : 'none';
+              ? `0 0 24px rgba(52, 211, 153, 0.9), inset 0 0 14px rgba(52, 211, 153, 0.4)`
+              : isPrompted || isRhythmApproaching
+              ? `0 0 32px ${drum.color}, 0 0 12px #ffffff, inset 0 0 22px ${drum.color}`
+              : idleShadow;
 
             return (
               <Button
                 key={drum.id}
                 type="button"
                 variant="ghost"
-                onClick={() => onDrumClick?.(drum.id)}
                 onPointerDown={(e) => {
                   e.preventDefault();
                   onDrumClick?.(drum.id);
@@ -395,21 +450,33 @@ export const CameraView: React.FC<CameraViewProps> = ({
                   width: `${zone.width}%`,
                   height: `${zone.height}%`,
                   borderColor: borderCol,
-                  backgroundColor: bgCol,
+                  borderWidth,
+                  background: bgCol,
                   boxShadow: shadowStyle,
+                  backdropFilter: 'blur(8px)',
                 }}
-                className={`absolute z-10 rounded-2xl border-2 pointer-events-auto cursor-pointer transition-transform duration-100 flex flex-col items-center justify-center p-2 select-none hover:border-cyan-400 hover:ring-2 hover:ring-cyan-500/40 ${
+                className={`absolute z-10 rounded-2xl pointer-events-auto cursor-pointer transition-all duration-100 flex flex-col items-center justify-center p-2 select-none hover:border-cyan-400 hover:ring-2 hover:ring-cyan-500/40 ${
                   isUserHit
                     ? 'scale-95 ring-2 ring-white z-20'
+                    : isRhythmHit
+                    ? 'scale-[1.06] ring-4 ring-white z-20'
                     : isFingerInside
                     ? 'scale-[1.03] ring-2 ring-cyan-400 z-20'
                     : isPlaybackHit
                     ? 'scale-[1.02] ring-2 ring-emerald-400/80'
-                    : isPrompted
-                    ? 'scale-[1.03] ring-4 ring-white/60'
+                    : isPrompted || isRhythmApproaching
+                    ? 'scale-[1.04] ring-2 ring-white/80'
                     : 'hover:scale-[1.02]'
                 }`}
               >
+                {/* Visual approaching rhythm beat ripple wave */}
+                {isRhythmApproaching && (
+                  <div
+                    className="absolute inset-0 rounded-2xl pointer-events-none border-2 border-white animate-ping opacity-60"
+                    style={{ borderColor: drum.color }}
+                  />
+                )}
+
                 {/* 1. User Live Hit Badge */}
                 {isUserHit && (
                   <div
@@ -420,49 +487,63 @@ export const CameraView: React.FC<CameraViewProps> = ({
                   </div>
                 )}
 
-                {/* 2. Finger Targeting Indicator (Always visible when index finger is inside zone) */}
-                {isFingerInside && !isUserHit && (
+                {/* 2. Rhythm Strike Cue Badge (when arriving beat is in hit window) */}
+                {isRhythmHit && !isUserHit && (
+                  <div className="absolute -top-3 z-30 font-black text-[11px] sm:text-xs uppercase px-2.5 py-0.5 rounded-full text-zinc-950 bg-white shadow-[0_0_15px_white] animate-bounce pointer-events-none">
+                    STRIKE!
+                  </div>
+                )}
+
+                {/* 3. Finger Targeting Indicator (Always visible when index finger is inside zone) */}
+                {isFingerInside && !isUserHit && !isRhythmHit && (
                   <div className="absolute -top-3 z-30 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-cyan-950 bg-cyan-300 shadow-lg pointer-events-none animate-pulse">
                     Targeted
                   </div>
                 )}
 
-                {/* 3. Backing Loop Playback Beat Indicator */}
-                {isPlaybackHit && !isUserHit && !isFingerInside && (
+                {/* 4. Backing Loop Playback Beat Indicator */}
+                {isPlaybackHit && !isUserHit && !isFingerInside && !isRhythmHit && (
                   <div className="absolute -top-3 z-30 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-950 bg-emerald-300 shadow-md pointer-events-none animate-pulse">
                     Loop Beat
                   </div>
                 )}
 
-                {/* 4. Prompted Drum Indicator */}
-                {isPrompted && !isUserHit && !isFingerInside && !isPlaybackHit && (
+                {/* 5. Prompted Drum Indicator / Approaching Cue */}
+                {(isPrompted || isRhythmApproaching) && !isUserHit && !isFingerInside && !isPlaybackHit && !isRhythmHit && (
                   <div
-                    className="absolute -top-3 z-30 whitespace-nowrap rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-zinc-950 shadow-lg pointer-events-none"
-                    style={{ backgroundColor: drum.color }}
+                    className="absolute -top-3 z-30 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-zinc-950 shadow-lg pointer-events-none animate-pulse"
+                    style={{ backgroundColor: isRhythmApproaching ? '#fde047' : drum.color }}
                   >
-                    Play this
+                    {isRhythmApproaching ? 'BEAT!' : 'Play this'}
                   </div>
                 )}
 
                 <div className="flex flex-col items-center pointer-events-none">
                   <span
-                    className="font-black text-xs sm:text-sm tracking-wide uppercase drop-shadow"
-                    style={{ color: isUserHit ? '#ffffff' : drum.color }}
+                    className="font-black text-xs sm:text-sm md:text-base tracking-wide uppercase"
+                    style={{
+                      color: '#ffffff',
+                      textShadow: `0 0 14px ${drum.color}, 0 0 6px ${drum.color}, 0 2px 4px rgba(0,0,0,0.95)`,
+                    }}
                   >
                     {drum.name}
                   </span>
-                  <span className="text-[9px] sm:text-[10px] text-zinc-300/80 font-medium hidden sm:block">
+                  <Badge
+                    variant="outline"
+                    className="mt-1 rounded-md px-1.5 py-0 text-[10px] font-mono font-bold bg-zinc-950/80 text-zinc-200 border-zinc-700/80 shadow"
+                  >
                     Key [{drum.key}]
-                  </span>
+                  </Badge>
                 </div>
 
                 {/* Energy indicator inside drum */}
-                <div className="w-14 sm:w-20 h-1 bg-zinc-800/80 rounded-full mt-1.5 overflow-hidden pointer-events-none">
+                <div className="w-14 sm:w-20 h-1 bg-black/40 border border-white/10 rounded-full mt-1.5 overflow-hidden pointer-events-none">
                   <div
                     className="h-full rounded-full transition-all duration-75"
                     style={{
                       width: `${Math.min(100, isFingerInside ? Math.max(45, energy) : energy)}%`,
                       backgroundColor: isFingerInside ? '#38bdf8' : isPlaybackHit ? '#34d399' : drum.color,
+                      boxShadow: energy > 5 ? `0 0 8px ${drum.color}` : 'none',
                     }}
                   />
                 </div>
@@ -566,6 +647,33 @@ export const CameraView: React.FC<CameraViewProps> = ({
           </Badge>
 
           <div className="flex items-center gap-2 pointer-events-auto">
+            {/* Glow / Brightness Mode Selector */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={toggleGlowMode}
+              className="flex items-center gap-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-750 px-2.5 py-1 text-xs font-semibold text-zinc-200 transition-all shadow cursor-pointer"
+              title="Chuyển đổi độ sáng viền beat (Sáng Neon / Siêu sáng / Dịu nhẹ)"
+            >
+              <Sun
+                className={`h-3.5 w-3.5 ${
+                  padGlowMode === 'ultra'
+                    ? 'text-yellow-400'
+                    : padGlowMode === 'neon'
+                    ? 'text-amber-400'
+                    : 'text-zinc-400'
+                }`}
+              />
+              <span className="hidden sm:inline">
+                {padGlowMode === 'ultra'
+                  ? '☀️ Siêu sáng'
+                  : padGlowMode === 'neon'
+                  ? '✨ Sáng Neon'
+                  : '🌙 Dịu nhẹ'}
+              </span>
+            </Button>
+
             {/* Edit Layout Button */}
             {allowLayoutEditing && (
               <Button
@@ -577,7 +685,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
                 title="Customize Drum Pad Positions and Sizes"
               >
                 <Sliders className="h-3.5 w-3.5 text-amber-400" />
-                <span>Edit Layout</span>
+                <span className="hidden sm:inline">Edit Layout</span>
               </Button>
             )}
 

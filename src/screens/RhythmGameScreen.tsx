@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   AppSettings,
   BeatNote,
@@ -16,7 +16,7 @@ import { cameraTracker, TrackingState } from '../services/cameraTracker';
 import { audioEngine } from '../services/audio';
 import { useAuth } from '../context/AuthContext';
 import { storageService } from '../services/storage';
-import { ArrowLeft, Flame, Target, Trophy, Volume2 } from 'lucide-react';
+import { ArrowLeft, Flame, Target, Trophy, Volume2, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -52,12 +52,15 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
   onNavigate,
   settings,
 }) => {
-  const { user, updateScore } = useAuth();
+  const { user, isAuthenticated, updateScore } = useAuth();
   const [countdown, setCountdown] = useState<number | null>(3);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [notes, setNotes] = useState<BeatNote[]>(() =>
     challenge.notes.map((n) => ({ ...n, hit: false }))
   );
+
+  // User can toggle Beat Highway (thanh hướng dẫn nốt rơi); default is false (ẩn/bỏ đi theo yêu cầu)
+  const [showBeatHighway, setShowBeatHighway] = useState<boolean>(false);
 
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -97,6 +100,62 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
   const finishedRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
   const animFrameRef = useRef<number | null>(null);
+
+  // Debounce tracking to prevent duplicate hits within 60ms
+  const lastHitTimeRef = useRef<Record<DrumType, number>>({
+    hihat: 0,
+    tom: 0,
+    crash: 0,
+    snare: 0,
+    kick: 0,
+  });
+
+  // Real-time calculation of upcoming and active rhythm beat cues for each drum pad
+  const rhythmBeatCues = useMemo(() => {
+    const cues: Record<DrumType, { isHitWindow: boolean; isApproaching: boolean; progress: number }> = {
+      hihat: { isHitWindow: false, isApproaching: false, progress: 0 },
+      tom: { isHitWindow: false, isApproaching: false, progress: 0 },
+      crash: { isHitWindow: false, isApproaching: false, progress: 0 },
+      snare: { isHitWindow: false, isApproaching: false, progress: 0 },
+      kick: { isHitWindow: false, isApproaching: false, progress: 0 },
+    };
+
+    const APPROACH_WINDOW_MS = 600;
+    const HIT_WINDOW_MS = 140;
+
+    for (const note of notes) {
+      if (note.hit) continue;
+      const diff = note.timeMs - currentTimeMs;
+      if (diff > APPROACH_WINDOW_MS) break;
+
+      if (diff >= -HIT_WINDOW_MS && diff <= HIT_WINDOW_MS) {
+        cues[note.drum] = {
+          isHitWindow: true,
+          isApproaching: true,
+          progress: 1,
+        };
+      } else if (diff > HIT_WINDOW_MS && diff <= APPROACH_WINDOW_MS) {
+        const progress = 1 - (diff - HIT_WINDOW_MS) / (APPROACH_WINDOW_MS - HIT_WINDOW_MS);
+        if (!cues[note.drum].isHitWindow) {
+          cues[note.drum] = {
+            isHitWindow: false,
+            isApproaching: true,
+            progress,
+          };
+        }
+      }
+    }
+
+    return cues;
+  }, [notes, currentTimeMs]);
+
+  // Accurate real-time milliseconds elapsed since challenge start
+  const getNowMs = (): number => {
+    if (startTimeRef.current === null) return 0;
+    return Math.max(0, Math.round(performance.now() - startTimeRef.current));
+  };
+
+  const evaluateDrumHitRef = useRef<(drum: DrumType, velocity?: number) => void>(() => {});
 
   const totalNotes = challenge.notes.length;
   const processedNotes = perfectHits + goodHits + misses;
@@ -156,24 +215,26 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
       rank,
     };
 
-    // Save record to persistent storage and leaderboard
-    try {
-      await storageService.savePlayRecord({
-        userId: user ? user.id : 'guest-player',
-        username: user ? user.username : 'Drummer Pro',
-        avatarUrl: user?.avatarUrl,
-        trackId: challenge.id,
-        trackTitle: challenge.title,
-        score: finalStats.score,
-        accuracy: finalAccuracy,
-        maxCombo: finalStats.maxCombo,
-        rank,
-      });
+    // Save record to persistent storage and leaderboard only for registered users
+    if (isAuthenticated && user && !user.id.startsWith('guest-')) {
+      try {
+        await storageService.savePlayRecord({
+          userId: user.id,
+          username: user.username,
+          avatarUrl: user.avatarUrl,
+          trackId: challenge.id,
+          trackTitle: challenge.title,
+          score: finalStats.score,
+          accuracy: finalAccuracy,
+          maxCombo: finalStats.maxCombo,
+          rank,
+        });
 
-      // Update user level and experience
-      await updateScore(finalStats.score);
-    } catch (e) {
-      console.warn('Failed to save play record:', e);
+        // Update user level and experience
+        await updateScore(finalStats.score);
+      } catch (e) {
+        console.warn('Failed to save play record:', e);
+      }
     }
 
     onFinishGame(result);
@@ -183,17 +244,25 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
   const evaluateDrumHit = (drum: DrumType, velocity: number = 0.85) => {
     if (finishedRef.current || countdown !== null) return;
 
+    const now = performance.now();
+    // Debounce fast duplicate triggers for the same drum within 60ms
+    if (now - lastHitTimeRef.current[drum] < 60) return;
+    lastHitTimeRef.current[drum] = now;
+
     if (settings.sfxEnabled) {
-      audioEngine.playDrum(drum, velocity, settings.drumKitPreset);
+      const effectiveVelocity = velocity * (settings.velocitySensitivity ?? 1.0);
+      audioEngine.playDrum(drum, effectiveVelocity, settings.drumKitPreset);
     }
 
+    // Precise real-time millisecond offset since song started
+    const nowMs = getNowMs();
     const currentNotes = notesRef.current;
-    const nowMs = currentTimeMs;
 
     // Hit window tolerances:
-    // Perfect: within 130ms
-    // Good: within 250ms
-    const HIT_WINDOW_MS = 260;
+    // Perfect: within 140ms
+    // Good: within 300ms
+    const PERFECT_WINDOW_MS = 140;
+    const GOOD_WINDOW_MS = 300;
 
     // Find closest unhit note of this drum type
     let candidateIdx = -1;
@@ -210,23 +279,24 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
       }
     }
 
-    let rating: HitRating = 'miss';
+    let rating: HitRating | null = null;
 
-    if (candidateIdx !== -1 && minDiff <= HIT_WINDOW_MS) {
-      rating = minDiff <= 120 ? 'perfect' : 'good';
+    if (candidateIdx !== -1 && minDiff <= GOOD_WINDOW_MS) {
+      rating = minDiff <= PERFECT_WINDOW_MS ? 'perfect' : 'good';
 
-      // Mark note as hit
+      // Mark note as hit synchronously in ref and state
       const nextNotes = [...currentNotes];
       nextNotes[candidateIdx] = {
         ...nextNotes[candidateIdx],
         hit: true,
         hitRating: rating,
       };
+      notesRef.current = nextNotes;
       setNotes(nextNotes);
 
       // Score multiplier based on combo
       const currentStats = statsRef.current;
-      const multiplier = currentStats.combo > 20 ? 3 : currentStats.combo > 10 ? 2 : 1;
+      const multiplier = currentStats.combo >= 20 ? 3 : currentStats.combo >= 10 ? 2 : 1;
       const points = (rating === 'perfect' ? 350 : 180) * multiplier;
       const nextCombo = currentStats.combo + 1;
 
@@ -249,23 +319,40 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
       audioEngine.playHitSound(rating);
     } else {
       // Off-beat or wrong drum hit
-      const currentStats = statsRef.current;
-      const nextStats: ChallengeStats = {
-        ...currentStats,
-        combo: 0,
-        misses: currentStats.misses + 1,
-      };
-      statsRef.current = nextStats;
+      const firstNote = currentNotes[0];
+      const isIntro = firstNote && nowMs < firstNote.timeMs - GOOD_WINDOW_MS;
 
-      setCombo(0);
-      setMisses(nextStats.misses);
-      audioEngine.playHitSound('miss');
+      // Only penalize if not in introductory silence and a note of another drum was expected
+      if (!isIntro) {
+        let nearbyNote = false;
+        for (const n of currentNotes) {
+          if (!n.hit && Math.abs(n.timeMs - nowMs) <= GOOD_WINDOW_MS) {
+            nearbyNote = true;
+            break;
+          }
+        }
+
+        if (nearbyNote) {
+          rating = 'miss';
+          const currentStats = statsRef.current;
+          const nextStats: ChallengeStats = {
+            ...currentStats,
+            combo: 0,
+            misses: currentStats.misses + 1,
+          };
+          statsRef.current = nextStats;
+
+          setCombo(0);
+          setMisses(nextStats.misses);
+          audioEngine.playHitSound('miss');
+        }
+      }
     }
 
     // Trigger visual pulse
     setActiveHits((prev) => ({
       ...prev,
-      [drum]: { isHit: true, rating },
+      [drum]: { isHit: true, rating: rating ?? undefined },
     }));
 
     window.setTimeout(() => {
@@ -275,8 +362,12 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
       }));
     }, 180);
 
-    setLastHitFeedback({ drum, rating });
+    if (rating) {
+      setLastHitFeedback({ drum, rating });
+    }
   };
+
+  evaluateDrumHitRef.current = evaluateDrumHit;
 
   // Subscribe to camera tracking and hits
   useEffect(() => {
@@ -284,14 +375,14 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
       setTrackingState({ ...st });
     });
     const unsubHit = cameraTracker.subscribeHit((drum, velocity) => {
-      evaluateDrumHit(drum, velocity);
+      evaluateDrumHitRef.current(drum, velocity);
     });
 
     return () => {
       unsubState();
       unsubHit();
     };
-  }, [countdown, settings.drumKitPreset, settings.sfxEnabled]);
+  }, []);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -301,12 +392,12 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
       const drum = DRUMS.find(
         (item) => item.key === key || (item.id === 'kick' && e.code === 'Space')
       );
-      if (drum) evaluateDrumHit(drum.id, 0.9);
+      if (drum) evaluateDrumHitRef.current(drum.id, 0.9);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [countdown, settings.drumKitPreset, settings.sfxEnabled]);
+  }, [countdown]);
 
   // Countdown timer
   useEffect(() => {
@@ -320,8 +411,8 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
 
     audioEngine.playCountdownBeep(true);
     const timer = window.setTimeout(() => {
-      setCountdown(null);
       startTimeRef.current = performance.now();
+      setCountdown(null);
     }, 500);
     return () => window.clearTimeout(timer);
   }, [countdown]);
@@ -332,18 +423,19 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
 
     let isRunning = true;
 
-    const loop = (timestamp: number) => {
+    const loop = () => {
       if (!isRunning || finishedRef.current) return;
 
       if (startTimeRef.current === null) {
-        startTimeRef.current = timestamp;
+        startTimeRef.current = performance.now();
       }
 
-      const elapsed = Math.round(timestamp - startTimeRef.current);
+      const elapsed = Math.round(performance.now() - startTimeRef.current);
       setCurrentTimeMs(elapsed);
 
       // Check notes that passed the hit window without being struck (Miss)
-      const MISS_THRESHOLD_MS = 250;
+      // Threshold 300ms matches the good hit window
+      const MISS_THRESHOLD_MS = 300;
       let missedCount = 0;
       const updatedNotes = notesRef.current.map((n) => {
         if (!n.hit && n.timeMs + MISS_THRESHOLD_MS < elapsed) {
@@ -453,6 +545,21 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
               {Math.min(processedNotes, totalNotes)}/{totalNotes}
             </span>
           </Card>
+
+          {/* Toggle Beat Highway button */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBeatHighway((v) => !v)}
+            className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white cursor-pointer"
+            title="Bật/Tắt thanh hướng dẫn nhịp rơi"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            <span className="hidden sm:inline">
+              {showBeatHighway ? 'Ẩn thanh nhịp rơi' : 'Hiện thanh nhịp rơi'}
+            </span>
+          </Button>
         </div>
       </div>
 
@@ -463,18 +570,20 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
         className="mt-2 gap-0 [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-zinc-900 [&_[data-slot=progress-indicator]]:bg-gradient-to-r [&_[data-slot=progress-indicator]]:from-rose-500 [&_[data-slot=progress-indicator]]:to-amber-500"
       />
 
-      {/* Falling Note Lane Highway */}
-      <div className="mt-3">
-        <FallingNoteLane
-          notes={notes}
-          currentTimeMs={currentTimeMs}
-          bpm={challenge.bpm}
-          combo={combo}
-          lastHitFeedback={lastHitFeedback}
-          activeHits={activeHits}
-          onDrumClick={evaluateDrumHit}
-        />
-      </div>
+      {/* Falling Note Lane Highway (Ẩn mặc định theo yêu cầu của user) */}
+      {showBeatHighway && (
+        <div className="mt-3">
+          <FallingNoteLane
+            notes={notes}
+            currentTimeMs={currentTimeMs}
+            bpm={challenge.bpm}
+            combo={combo}
+            lastHitFeedback={lastHitFeedback}
+            activeHits={activeHits}
+            onDrumClick={(drum) => evaluateDrumHitRef.current(drum, 0.9)}
+          />
+        </div>
+      )}
 
       {/* Main Gameplay Screen: Camera Tracking & Drum Console */}
       <div className="mt-3 grid flex-1 grid-cols-1 gap-4 lg:grid-cols-12 items-start">
@@ -494,7 +603,8 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
             rightHand={trackingState.rightHand}
             zoneEnergies={trackingState.zoneEnergies}
             activeHits={activeHits}
-            onDrumClick={evaluateDrumHit}
+            rhythmBeatCues={rhythmBeatCues}
+            onDrumClick={(drum) => evaluateDrumHitRef.current(drum, 0.9)}
             mirror={settings.mirrorCamera}
             showHandIndicators={settings.showHandIndicators}
           />
@@ -519,7 +629,7 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
                   isHit={activeHits[drum.id].isHit}
                   hitRating={activeHits[drum.id].rating}
                   energyPercent={trackingState.zoneEnergies[drum.id]}
-                  onClick={() => evaluateDrumHit(drum.id, 0.9)}
+                  onClick={() => evaluateDrumHitRef.current(drum.id, 0.9)}
                   size="sm"
                 />
               );
@@ -530,7 +640,7 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
                 isHit={activeHits.tom.isHit}
                 hitRating={activeHits.tom.rating}
                 energyPercent={trackingState.zoneEnergies.tom}
-                onClick={() => evaluateDrumHit('tom', 0.9)}
+                onClick={() => evaluateDrumHitRef.current('tom', 0.9)}
                 size="sm"
               />
             </div>

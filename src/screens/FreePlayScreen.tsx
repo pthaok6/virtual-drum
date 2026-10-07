@@ -6,6 +6,9 @@ import { CameraView } from '../components/CameraView';
 import { LooperControl } from '../components/LooperControl';
 import { cameraTracker, TrackingState } from '../services/cameraTracker';
 import { audioEngine } from '../services/audio';
+import { recordingsStorage } from '../services/recordingsStorage';
+import { renderHitsToWav, downloadFile } from '../services/wavExporter';
+import { useAuth } from '../context/AuthContext';
 import {
   Camera,
   ArrowLeft,
@@ -34,6 +37,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
   settings,
   onUpdateSettings,
 }) => {
+  const { user, isAuthenticated, openAuthModal } = useAuth();
   const [trackingState, setTrackingState] = useState<TrackingState>({
     isStreaming: false,
     isInitializing: false,
@@ -64,6 +68,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isLoopMode, setIsLoopMode] = useState<boolean>(false); // Default false: Single Playback (Chỉ phát lại 1 lần)
   const [trimFeedback, setTrimFeedback] = useState<string | null>(null);
+  const [isSavedToLibrary, setIsSavedToLibrary] = useState<boolean>(false);
 
   // References to prevent stale closure in audio & video loops
   const isArmedRef = useRef(false);
@@ -169,7 +174,8 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
     (drum: DrumType, velocity: number = 0.85) => {
       // 1. Play sound
       if (settings.sfxEnabled) {
-        audioEngine.playDrum(drum, velocity, settings.drumKitPreset);
+        const effectiveVelocity = velocity * (settings.velocitySensitivity ?? 1.0);
+        audioEngine.playDrum(drum, effectiveVelocity, settings.drumKitPreset);
       }
 
       setLastVelocity(velocity);
@@ -260,6 +266,36 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
     isArmedRef.current = true;
     setIsRecording(false);
     isRecordingRef.current = false;
+    setIsSavedToLibrary(false);
+  };
+
+  const handleSaveToLibrary = () => {
+    if (recordedHits.length === 0 || loopDurationMs <= 0) return;
+    if (!isAuthenticated || !user || user.id.startsWith('guest-')) {
+      alert('Tài khoản khách chỉ chơi và nghe thử, không thể lưu vào thư viện! Vui lòng đăng nhập để lưu trữ bản thu của bạn.');
+      openAuthModal();
+      return;
+    }
+    const title = `FreePlay Jam (${(loopDurationMs / 1000).toFixed(1)}s)`;
+    recordingsStorage.saveRecording(
+      title,
+      recordedHits,
+      loopDurationMs,
+      settings.drumKitPreset,
+      user.username,
+      user.id
+    );
+    setIsSavedToLibrary(true);
+  };
+
+  const handleDownloadWav = async () => {
+    if (recordedHits.length === 0 || loopDurationMs <= 0) return;
+    try {
+      const blob = await renderHitsToWav(recordedHits, loopDurationMs, settings.drumKitPreset);
+      downloadFile(blob, `freeplay-jam-${Date.now()}.wav`);
+    } catch (e) {
+      console.error('Failed to render WAV:', e);
+    }
   };
 
   const stopRecording = () => {
@@ -613,6 +649,10 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
           onClearLoop={clearLoop}
           onSpeedChange={handleSpeedChange}
           onTrimLoop={trimLoop}
+          isSaved={isSavedToLibrary}
+          onSaveToLibrary={handleSaveToLibrary}
+          onDownloadWav={handleDownloadWav}
+          onOpenLibrary={() => onNavigate('recordings')}
         />
       </div>
 

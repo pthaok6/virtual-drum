@@ -13,6 +13,10 @@ import {
   Scissors,
   Radio,
   Repeat,
+  Download,
+  BookmarkCheck,
+  FolderOpen,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,6 +34,7 @@ interface LooperControlProps {
   playbackSpeed: number;
   isLoopMode?: boolean;
   trimFeedback?: string | null;
+  isSaved?: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onTogglePlay: () => void;
@@ -38,6 +43,9 @@ interface LooperControlProps {
   onClearLoop: () => void;
   onSpeedChange: (speed: number) => void;
   onTrimLoop?: () => void;
+  onSaveToLibrary?: () => void;
+  onDownloadWav?: () => void;
+  onOpenLibrary?: () => void;
 }
 
 export const LooperControl: React.FC<LooperControlProps> = ({
@@ -52,6 +60,7 @@ export const LooperControl: React.FC<LooperControlProps> = ({
   playbackSpeed,
   isLoopMode = false,
   trimFeedback = null,
+  isSaved = false,
   onStartRecording,
   onStopRecording,
   onTogglePlay,
@@ -60,6 +69,9 @@ export const LooperControl: React.FC<LooperControlProps> = ({
   onClearLoop,
   onSpeedChange,
   onTrimLoop,
+  onSaveToLibrary,
+  onDownloadWav,
+  onOpenLibrary,
 }) => {
   const hasLoop = recordedHits.length > 0 && loopDurationMs > 0;
   const playheadScrubberRef = useRef<HTMLDivElement | null>(null);
@@ -300,6 +312,54 @@ export const LooperControl: React.FC<LooperControlProps> = ({
                   ? `Trim Tail (-${(tailSilenceMs / 1000).toFixed(1)}s)`
                   : 'Tail Tight ✓'}
               </span>
+            </Button>
+          )}
+          {/* Save to Library */}
+          {hasLoop && !isRecording && !isArmed && onSaveToLibrary && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onSaveToLibrary}
+              className={`rounded-xl text-xs font-bold flex items-center gap-1.5 px-3 py-2 transition-all cursor-pointer ${
+                isSaved
+                  ? 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300'
+                  : 'border-rose-500/50 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 shadow-md shadow-rose-500/10'
+              }`}
+              title="Save this beat to your Recordings Library"
+            >
+              <BookmarkCheck className="h-3.5 w-3.5 text-rose-400" />
+              <span>{isSaved ? 'Saved ✓' : 'Save to Library'}</span>
+            </Button>
+          )}
+
+          {/* Download Studio WAV */}
+          {hasLoop && !isRecording && !isArmed && onDownloadWav && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onDownloadWav}
+              className="rounded-xl text-xs font-bold flex items-center gap-1.5 px-3 py-2 transition-all border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 cursor-pointer shadow-md shadow-emerald-500/10"
+              title="Download loop as 16-bit WAV file"
+            >
+              <Download className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Download WAV</span>
+            </Button>
+          )}
+
+          {/* Open Library Button */}
+          {onOpenLibrary && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onOpenLibrary}
+              className="rounded-xl text-xs font-semibold flex items-center gap-1.5 px-2.5 py-2 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 cursor-pointer"
+              title="Open Recordings Library"
+            >
+              <FolderOpen className="h-3.5 w-3.5 text-zinc-400" />
+              <span className="hidden sm:inline">Library</span>
             </Button>
           )}
         </div>

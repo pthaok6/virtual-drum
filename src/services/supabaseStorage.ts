@@ -13,6 +13,14 @@ export class SupabaseStorageService implements IStorageService {
   public async savePlayRecord(
     recordData: Omit<PlayRecord, 'id' | 'timestamp'>
   ): Promise<PlayRecord> {
+    if (!recordData.userId || recordData.userId.startsWith('guest')) {
+      return {
+        ...recordData,
+        id: `guest-${Date.now()}`,
+        timestamp: Date.now(),
+      };
+    }
+
     const supabase = getSupabaseClient();
     const timestamp = Date.now();
 
@@ -82,12 +90,13 @@ export class SupabaseStorageService implements IStorageService {
     }
 
     try {
+      // Query enough rows to group and deduplicate by account
       let query = supabase
         .from('play_records')
         .select('*')
         .order('score', { ascending: false })
         .order('accuracy', { ascending: false })
-        .limit(limit);
+        .limit(Math.max(limit * 4, 100));
 
       if (trackId && trackId !== 'all') {
         query = query.eq('track_id', trackId);
@@ -100,19 +109,50 @@ export class SupabaseStorageService implements IStorageService {
         return this.localFallback.getLeaderboard(trackId, limit);
       }
 
-      return data.map((item: any) => ({
-        id: item.id,
-        userId: item.user_id || 'player',
-        username: item.username,
-        avatarUrl: item.avatar_url,
-        trackId: item.track_id,
-        trackTitle: item.track_title,
-        score: item.score,
-        accuracy: item.accuracy,
-        maxCombo: item.max_combo,
-        rank: item.rank,
-        timestamp: new Date(item.created_at).getTime(),
-      }));
+      // Group by account so each account only shows their highest score achieved
+      const bestByAccount = new Map<string, LeaderboardEntry>();
+
+      for (const item of data) {
+        const accountKey =
+          item.user_id && !String(item.user_id).startsWith('guest-')
+            ? String(item.user_id)
+            : String(item.username).trim().toLowerCase();
+
+        const entry: LeaderboardEntry = {
+          id: item.id,
+          userId: item.user_id || 'player',
+          username: item.username,
+          avatarUrl: item.avatar_url,
+          trackId: item.track_id,
+          trackTitle: item.track_title,
+          score: item.score,
+          accuracy: item.accuracy,
+          maxCombo: item.max_combo,
+          rank: item.rank,
+          timestamp: new Date(item.created_at).getTime(),
+        };
+
+        const existing = bestByAccount.get(accountKey);
+        if (!existing) {
+          bestByAccount.set(accountKey, entry);
+        } else {
+          // Keep the one with higher score, or higher accuracy on tie
+          if (
+            entry.score > existing.score ||
+            (entry.score === existing.score && entry.accuracy > existing.accuracy)
+          ) {
+            bestByAccount.set(accountKey, entry);
+          }
+        }
+      }
+
+      const uniqueLeaderboard = Array.from(bestByAccount.values());
+      uniqueLeaderboard.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return b.accuracy - a.accuracy;
+      });
+
+      return uniqueLeaderboard.slice(0, limit);
     } catch (err) {
       console.warn('Supabase getLeaderboard fallback to local:', err);
       return this.localFallback.getLeaderboard(trackId, limit);

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScreenType } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { Volume2, VolumeX, Settings, Camera, Music, Trophy, User, LogIn } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Camera, Music, Trophy, User, LogIn, Disc3, Radio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -109,6 +109,34 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Trophy className="h-3.5 w-3.5 text-amber-400" />
             <span>Leaderboard</span>
           </Button>
+          <Button
+            id="nav-link-recordings"
+            variant="ghost"
+            size="sm"
+            onClick={() => onNavigate('recordings')}
+            className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              currentScreen === 'recordings'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+            }`}
+          >
+            <Disc3 className="h-3.5 w-3.5 text-rose-400" />
+            <span>Recordings</span>
+          </Button>
+          <Button
+            id="nav-link-rooms"
+            variant="ghost"
+            size="sm"
+            onClick={() => onNavigate('rooms')}
+            className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              currentScreen === 'rooms'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+            }`}
+          >
+            <Radio className="h-3.5 w-3.5 text-purple-400 animate-pulse" />
+            <span>Live Rooms</span>
+          </Button>
         </nav>
 
         {/* Right Tools & User Profile */}
@@ -119,7 +147,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={openAuthModal}
             className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/90 px-2.5 py-1 text-xs hover:border-zinc-700 hover:bg-zinc-800 transition-all cursor-pointer"
           >
-            {user ? (
+            {isAuthenticated && user ? (
               <>
                 <img
                   src={user.avatarUrl}
@@ -135,8 +163,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               </>
             ) : (
               <>
-                <LogIn className="h-4 w-4 text-rose-400" />
-                <span className="font-semibold text-zinc-300">Sign In</span>
+                <User className="h-4 w-4 text-zinc-400" />
+                <span className="font-medium text-zinc-300">Khách</span>
+                <Badge
+                  variant="outline"
+                  className="border-rose-500/30 bg-rose-500/10 text-rose-400 text-[10px] px-1.5 py-0 font-semibold ml-0.5"
+                >
+                  Đăng nhập
+                </Badge>
               </>
             )}
           </button>

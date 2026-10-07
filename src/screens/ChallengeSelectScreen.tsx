@@ -20,6 +20,9 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   const previewTimerRef = useRef<NodeJS.Timeout[]>([]);
 
+  const [difficultyFilter, setDifficultyFilter] = useState<'All' | 'Easy' | 'Medium' | 'Hard' | 'Expert'>('All');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   const stopPreview = () => {
     previewTimerRef.current.forEach(clearTimeout);
     previewTimerRef.current = [];
@@ -56,15 +59,13 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
     previewTimerRef.current.push(endTimer);
   };
 
-  const selectedChallenge = CHALLENGES.find((c) => c.id === selectedId) || CHALLENGES[0];
-
   const handleStartGame = (challenge: RhythmChallenge) => {
     stopPreview();
     onSelectChallenge(challenge);
     onNavigate('rhythm-game');
   };
 
-  const getDifficultyBadge = (difficulty: 'Easy' | 'Medium' | 'Hard') => {
+  const getDifficultyBadge = (difficulty: 'Easy' | 'Medium' | 'Hard' | 'Expert') => {
     switch (difficulty) {
       case 'Easy':
         return (
@@ -84,39 +85,91 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
             Hard
           </Badge>
         );
+      case 'Expert':
+        return (
+          <Badge variant="outline" className="border-purple-500/40 bg-purple-500/20 px-2.5 text-xs font-bold text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.3)]">
+            ⚡ Expert
+          </Badge>
+        );
     }
   };
+
+  const filteredChallenges = CHALLENGES.filter((c) => {
+    const matchesDifficulty = difficultyFilter === 'All' || c.difficulty === difficultyFilter;
+    const matchesSearch =
+      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesDifficulty && matchesSearch;
+  });
+
+  const selectedChallenge = CHALLENGES.find((c) => c.id === selectedId) || filteredChallenges[0] || CHALLENGES[0];
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full">
       {/* Header with Back button */}
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-zinc-800">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            stopPreview();
-            onNavigate('home');
-          }}
-          className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to Home</span>
-        </Button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Rhythm Challenge Selection
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-400">
-            Select a rhythm track to test your reaction speed, timing accuracy, and hand coordination.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-800">
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              stopPreview();
+              onNavigate('home');
+            }}
+            className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Home</span>
+          </Button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Rhythm Challenge Tracks</span>
+              <Badge className="bg-amber-500/10 border-amber-500/30 text-amber-400 text-xs font-mono">
+                {CHALLENGES.length} Tracks
+              </Badge>
+            </h1>
+            <p className="text-xs sm:text-sm text-zinc-400">
+              Select a track from Easy to Expert to test your timing, speed, and rhythm precision.
+            </p>
+          </div>
+        </div>
+
+        {/* Difficulty Filter Tabs */}
+        <div className="flex items-center gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+          {(['All', 'Easy', 'Medium', 'Hard', 'Expert'] as const).map((diff) => {
+            const count = diff === 'All' ? CHALLENGES.length : CHALLENGES.filter((c) => c.difficulty === diff).length;
+            const isActive = difficultyFilter === diff;
+            return (
+              <button
+                key={diff}
+                type="button"
+                onClick={() => setDifficultyFilter(diff)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  isActive
+                    ? diff === 'Expert'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : diff === 'Hard'
+                      ? 'bg-rose-500 text-white shadow-md'
+                      : diff === 'Medium'
+                      ? 'bg-amber-500 text-zinc-950 shadow-md font-bold'
+                      : diff === 'Easy'
+                      ? 'bg-emerald-500 text-zinc-950 shadow-md font-bold'
+                      : 'bg-zinc-800 text-white shadow-md'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                }`}
+              >
+                {diff} ({count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Challenge Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
-        {CHALLENGES.map((challenge) => {
+        {filteredChallenges.map((challenge) => {
           const isSelected = selectedId === challenge.id;
           const isPreviewing = previewingId === challenge.id;
 

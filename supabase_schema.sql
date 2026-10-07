@@ -110,8 +110,48 @@ create index if not exists idx_play_records_track_score on public.play_records (
 create index if not exists idx_play_records_user on public.play_records (user_id);
 create index if not exists idx_play_records_created on public.play_records (created_at desc);
 
+-- 4. BẢNG LƯU BẢN THU ÂM RIÊNG CỦA TỪNG TÀI KHOẢN (PUBLIC.USER_RECORDINGS)
+create table if not exists public.user_recordings (
+  id text primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  title text not null,
+  author_name text not null,
+  preset text not null default 'acoustic',
+  duration_ms integer not null,
+  hits jsonb not null default '[]'::jsonb,
+  stats jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Kích hoạt Row Level Security cho user_recordings
+alter table public.user_recordings enable row level security;
+
+-- Policy: Mỗi tài khoản chỉ xem được bản thu của chính mình
+drop policy if exists "Users can select own recordings" on public.user_recordings;
+create policy "Users can select own recordings" on public.user_recordings
+  for select using (auth.uid() = user_id);
+
+-- Policy: Mỗi tài khoản chỉ chèn được bản thu của chính mình
+drop policy if exists "Users can insert own recordings" on public.user_recordings;
+create policy "Users can insert own recordings" on public.user_recordings
+  for insert with check (auth.uid() = user_id);
+
+-- Policy: Mỗi tài khoản chỉ cập nhật được bản thu của chính mình
+drop policy if exists "Users can update own recordings" on public.user_recordings;
+create policy "Users can update own recordings" on public.user_recordings
+  for update using (auth.uid() = user_id);
+
+-- Policy: Mỗi tài khoản chỉ xóa được bản thu của chính mình
+drop policy if exists "Users can delete own recordings" on public.user_recordings;
+create policy "Users can delete own recordings" on public.user_recordings
+  for delete using (auth.uid() = user_id);
+
+create index if not exists idx_user_recordings_user on public.user_recordings (user_id);
+create index if not exists idx_user_recordings_created on public.user_recordings (created_at desc);
+
 -- Thông báo hoàn thành
 do $$
 begin
-  raise notice 'Đã thiết lập bảng profiles, play_records và trigger Supabase thành công!';
+  raise notice 'Đã thiết lập bảng profiles, play_records, user_recordings và trigger Supabase thành công!';
 end $$;
+

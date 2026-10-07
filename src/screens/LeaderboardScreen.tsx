@@ -29,7 +29,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   onSelectChallengeToPlay,
 }) => {
   const { user } = useAuth();
-  const [selectedTrack, setSelectedTrack] = useState<string>('all');
+  const [selectedTrack, setSelectedTrack] = useState<string>(CHALLENGES[0]?.id || 'beginner-beat');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [personalBest, setPersonalBest] = useState<PersonalBest | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -44,7 +44,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
       const data = await storageService.getLeaderboard(selectedTrack, 50);
       setEntries(data);
 
-      if (user && selectedTrack !== 'all') {
+      if (user) {
         const pb = await storageService.getPersonalBest(user.id, selectedTrack);
         setPersonalBest(pb);
       } else {
@@ -153,7 +153,6 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
                 <SelectValue placeholder="Select Track" />
               </SelectTrigger>
               <SelectContent className="border-zinc-800 bg-zinc-950 text-xs text-zinc-200">
-                <SelectItem value="all">🌟 All Tracks</SelectItem>
                 {CHALLENGES.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     🥁 {c.title} ({c.difficulty})
@@ -175,91 +174,91 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
         </div>
       </div>
 
-      {/* Personal Best Banner (If track selected) */}
-      {selectedTrack !== 'all' && (
-        <div className="mt-4">
-          <Card className="rounded-2xl border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-zinc-900/60 to-rose-500/10 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400/20 text-amber-400 border border-amber-400/30">
-                  <Sparkles className="h-6 w-6" />
+      {/* Personal Best Banner for currently selected track */}
+      <div className="mt-4">
+        <Card className="rounded-2xl border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-zinc-900/60 to-rose-500/10 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-400/20 text-amber-400 border border-amber-400/30">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
+                  Personal Best Record
+                </span>
+                <h3 className="text-base font-bold text-white">
+                  {CHALLENGES.find((c) => c.id === selectedTrack)?.title || 'Challenge Track'}
+                </h3>
+              </div>
+            </div>
+
+            {personalBest ? (
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                <div>
+                  <span className="text-[10px] text-zinc-500 block uppercase font-bold">High Score</span>
+                  <span className="font-mono text-lg font-black text-amber-400">
+                    {personalBest.highScore.toLocaleString()}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
-                    Personal Best Record
+                  <span className="text-[10px] text-zinc-500 block uppercase font-bold">Accuracy</span>
+                  <span className="font-mono text-sm font-bold text-emerald-400">
+                    {personalBest.accuracy}%
                   </span>
-                  <h3 className="text-base font-bold text-white">
-                    {CHALLENGES.find((c) => c.id === selectedTrack)?.title || 'Challenge Track'}
-                  </h3>
                 </div>
+                <div>
+                  <span className="text-[10px] text-zinc-500 block uppercase font-bold">Max Combo</span>
+                  <span className="font-mono text-sm font-bold text-rose-400">
+                    {personalBest.maxCombo}x
+                  </span>
+                </div>
+                <Badge className={`px-2.5 py-1 text-xs rounded-md ${getRankBadgeClass(personalBest.rank)}`}>
+                  Rank {personalBest.rank}
+                </Badge>
+                {onSelectChallengeToPlay && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => onSelectChallengeToPlay(selectedTrack)}
+                    className="rounded-xl bg-amber-500 text-zinc-950 font-bold hover:bg-amber-400 text-xs"
+                  >
+                    <Play className="h-3.5 w-3.5 mr-1 fill-current" />
+                    Beat Record
+                  </Button>
+                )}
               </div>
-
-              {personalBest ? (
-                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                  <div>
-                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">High Score</span>
-                    <span className="font-mono text-lg font-black text-amber-400">
-                      {personalBest.highScore.toLocaleString()}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Accuracy</span>
-                    <span className="font-mono text-sm font-bold text-emerald-400">
-                      {personalBest.accuracy}%
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Max Combo</span>
-                    <span className="font-mono text-sm font-bold text-rose-400">
-                      {personalBest.maxCombo}x
-                    </span>
-                  </div>
-                  <Badge className={`px-2.5 py-1 text-xs rounded-md ${getRankBadgeClass(personalBest.rank)}`}>
-                    Rank {personalBest.rank}
-                  </Badge>
-                  {onSelectChallengeToPlay && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => onSelectChallengeToPlay(selectedTrack)}
-                      className="rounded-xl bg-amber-500 text-zinc-950 font-bold hover:bg-amber-400 text-xs"
-                    >
-                      <Play className="h-3.5 w-3.5 mr-1 fill-current" />
-                      Beat Record
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-zinc-400">
-                    You haven't completed this track yet. Give it a shot!
-                  </span>
-                  {onSelectChallengeToPlay && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => onSelectChallengeToPlay(selectedTrack)}
-                      className="rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 text-xs"
-                    >
-                      <Play className="h-3.5 w-3.5 mr-1 fill-current" />
-                      Play Now
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-      )}
+            ) : (
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-zinc-400">
+                  You haven't completed this track yet. Give it a shot!
+                </span>
+                {onSelectChallengeToPlay && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => onSelectChallengeToPlay(selectedTrack)}
+                    className="rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 text-xs"
+                  >
+                    <Play className="h-3.5 w-3.5 mr-1 fill-current" />
+                    Play Now
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
 
       {/* Main Leaderboard Table / Cards */}
       <div className="mt-4 flex-1">
         <Card className="rounded-2xl border-zinc-800 bg-zinc-900/60 shadow-xl backdrop-blur-md overflow-hidden">
           <CardHeader className="border-b border-zinc-800/80 p-4 pb-3 flex-row items-center justify-between">
             <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
-              Top Percussionists ({entries.length} Plays)
+              Top Percussionists • {CHALLENGES.find((c) => c.id === selectedTrack)?.title} ({entries.length} Players)
             </span>
-            <span className="text-[11px] text-zinc-500">Updated automatically after each play</span>
+            <span className="text-[11px] text-zinc-400">
+              Mỗi tài khoản hiển thị điểm số kỷ lục cao nhất
+            </span>
           </CardHeader>
 
           <CardContent className="p-0">

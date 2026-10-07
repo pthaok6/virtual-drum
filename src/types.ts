@@ -1,4 +1,4 @@
-export type ScreenType = 'home' | 'free-play' | 'challenge-select' | 'rhythm-game' | 'result' | 'leaderboard';
+export type ScreenType = 'home' | 'free-play' | 'challenge-select' | 'rhythm-game' | 'result' | 'leaderboard' | 'recordings' | 'rooms';
 
 export type DrumType = 'kick' | 'snare' | 'hihat' | 'tom' | 'crash';
 
@@ -50,6 +50,22 @@ export interface DrumLoopData {
   recordedAt: number;
 }
 
+export interface UserRecording {
+  id: string;
+  title: string;
+  authorName?: string;
+  userId?: string;
+  hits: RecordedHit[];
+  durationMs: number;
+  bpm?: number;
+  preset: DrumKitPreset;
+  createdAt: number;
+  stats?: {
+    totalHits: number;
+    drumCounts: Record<DrumType, number>;
+  };
+}
+
 export interface BeatNote {
   id: string;
   drum: DrumType;
@@ -62,7 +78,7 @@ export interface RhythmChallenge {
   id: string;
   title: string;
   artist: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
+  difficulty: 'Easy' | 'Medium' | 'Hard' | 'Expert';
   bpm: number;
   durationSeconds: number;
   description: string;
@@ -152,4 +168,56 @@ export interface IStorageService {
   getPersonalBest(userId: string, trackId: string): Promise<PersonalBest | null>;
   getAllPersonalBests(userId: string): Promise<Record<string, PersonalBest>>;
   getUserHistory(userId: string): Promise<PlayRecord[]>;
+}
+
+export type RoomRole = 'owner' | 'member';
+
+export interface RoomMember {
+  id: string; // user id
+  username: string;
+  avatarUrl: string;
+  level: number;
+  role: RoomRole;
+  isMuted: boolean;
+  isCameraOn: boolean;
+  isScreenSharing: boolean;
+  isSpeaking?: boolean;
+  audioLevel?: number; // 0..100
+  joinedAt: number;
+}
+
+export interface RoomChatMessage {
+  id: string;
+  roomId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatar: string;
+  content: string;
+  type: 'chat' | 'system' | 'reaction';
+  timestamp: number;
+}
+
+export interface LiveRoom {
+  id: string;
+  name: string;
+  description?: string;
+  genre: string; // 'Rock' | 'Acoustic' | 'Electronic' | 'All' | 'Jam'
+  ownerId: string;
+  ownerName: string;
+  ownerAvatar: string;
+  maxMembers: number;
+  isLocked: boolean;
+  members: RoomMember[];
+  activeScreenShareUser?: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface DrumHitBroadcast {
+  roomId: string;
+  senderId: string;
+  senderName: string;
+  drum: DrumType;
+  velocity: number;
+  timestamp: number;
 }

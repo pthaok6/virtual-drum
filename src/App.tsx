@@ -13,9 +13,15 @@ import { ChallengeSelectScreen } from './screens/ChallengeSelectScreen';
 import { RhythmGameScreen } from './screens/RhythmGameScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { LeaderboardScreen } from './screens/LeaderboardScreen';
+import { RecordingsScreen } from './screens/RecordingsScreen';
+import { RoomsLobbyScreen } from './screens/RoomsLobbyScreen';
+import { LiveRoomScreen } from './screens/LiveRoomScreen';
+import { parseSharedRecordingFromUrl } from './services/wavExporter';
+import { recordingsStorage } from './services/recordingsStorage';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('home');
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [selectedChallenge, setSelectedChallenge] = useState<RhythmChallenge>(CHALLENGES[0]);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
@@ -52,6 +58,15 @@ export default function App() {
   useEffect(() => {
     cameraTracker.setMirror(settings.mirrorCamera);
   }, [settings.mirrorCamera]);
+
+  // Check if a shared drum track was provided via URL
+  useEffect(() => {
+    const shared = parseSharedRecordingFromUrl();
+    if (shared) {
+      recordingsStorage.importRecording(shared);
+      setCurrentScreen('recordings');
+    }
+  }, []);
 
   const handleUpdateSettings = (partial: Partial<AppSettings>) => {
     setSettings((prev) => {
@@ -153,6 +168,28 @@ export default function App() {
               onNavigate={handleNavigate}
               onSelectChallengeToPlay={handleSelectChallengeToPlay}
             />
+          )}
+
+          {currentScreen === 'recordings' && (
+            <RecordingsScreen onNavigate={handleNavigate} />
+          )}
+
+          {currentScreen === 'rooms' && (
+            activeRoomId ? (
+              <LiveRoomScreen
+                roomId={activeRoomId}
+                onLeaveRoom={() => {
+                  setActiveRoomId(null);
+                }}
+              />
+            ) : (
+              <RoomsLobbyScreen
+                onNavigate={handleNavigate}
+                onJoinRoom={(roomId) => {
+                  setActiveRoomId(roomId);
+                }}
+              />
+            )
           )}
 
           {currentScreen === 'result' && gameResult && (

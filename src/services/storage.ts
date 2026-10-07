@@ -210,6 +210,14 @@ export class LocalStorageService implements IStorageService {
   }
 
   public async savePlayRecord(recordData: Omit<PlayRecord, 'id' | 'timestamp'>): Promise<PlayRecord> {
+    if (!recordData.userId || recordData.userId.startsWith('guest')) {
+      return {
+        ...recordData,
+        id: `guest-${Date.now()}`,
+        timestamp: Date.now(),
+      };
+    }
+
     const records = this.getAllRecords();
     const newRecord: PlayRecord = {
       ...recordData,
@@ -256,13 +264,38 @@ export class LocalStorageService implements IStorageService {
       filtered = records.filter((r) => r.trackId === trackId);
     }
 
+    // Deduplicate so each account only appears once with their highest score achieved
+    const bestByAccount = new Map<string, PlayRecord>();
+    for (const record of filtered) {
+      // Use unique account key: userId for registered accounts, or username for guest
+      const accountKey =
+        record.userId && !record.userId.startsWith('guest-')
+          ? record.userId
+          : record.username.trim().toLowerCase();
+
+      const existing = bestByAccount.get(accountKey);
+      if (!existing) {
+        bestByAccount.set(accountKey, record);
+      } else {
+        // Keep the record with higher score, or higher accuracy on tie
+        if (
+          record.score > existing.score ||
+          (record.score === existing.score && record.accuracy > existing.accuracy)
+        ) {
+          bestByAccount.set(accountKey, record);
+        }
+      }
+    }
+
+    const uniqueLeaderboard = Array.from(bestByAccount.values());
+
     // Sort descending by score, then accuracy
-    filtered.sort((a, b) => {
+    uniqueLeaderboard.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       return b.accuracy - a.accuracy;
     });
 
-    return filtered.slice(0, limit);
+    return uniqueLeaderboard.slice(0, limit);
   }
 
   public async getPersonalBest(userId: string, trackId: string): Promise<PersonalBest | null> {
