@@ -53,7 +53,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
   onJoinRoom,
 }) => {
   const { user, isAuthenticated, openAuthModal } = useAuth();
-  const [rooms, setRooms] = useState<LiveRoom[]>([]);
+  const [rooms, setRooms] = useState<LiveRoom[]>(() => roomService.getRooms());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [isSyncing, setIsSyncing] = useState(false);
@@ -67,30 +67,41 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initial sync
+    // Initial fetch from server and sync
+    roomService.fetchRoomsFromServer();
     roomService.requestSync();
 
     const unsub = roomService.subscribeRooms((updatedRooms) => {
       setRooms(updatedRooms);
     });
 
-    // Auto sync periodically so rooms created on other browsers appear automatically
+    // Auto sync periodically so rooms created on other browsers appear with zero delay
     const syncInterval = setInterval(() => {
+      roomService.fetchRoomsFromServer();
       roomService.requestSync();
-    }, 3500);
+    }, 1500);
+
+    // Instant sync when switching back to this browser window / tab
+    const handleFocus = () => {
+      roomService.fetchRoomsFromServer();
+      roomService.requestSync();
+    };
+    window.addEventListener('focus', handleFocus);
 
     return () => {
       unsub();
       clearInterval(syncInterval);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsSyncing(true);
+    await roomService.fetchRoomsFromServer();
     roomService.requestSync();
     setTimeout(() => {
       setIsSyncing(false);
-    }, 600);
+    }, 400);
   };
 
   const handleOpenCreateModal = () => {

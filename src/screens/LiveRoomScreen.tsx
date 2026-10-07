@@ -94,12 +94,17 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
 
   // Subscribe to room updates & messages
   useEffect(() => {
+    let hasLoadedRoom = Boolean(roomService.getRoom(roomId));
+
     const unsubRoom = roomService.subscribeRoom(roomId, (updatedRoom, updatedMessages) => {
       if (!updatedRoom) {
-        alert('Room has ended or no longer exists.');
-        onLeaveRoom();
+        if (hasLoadedRoom) {
+          alert('Room has ended or no longer exists.');
+          onLeaveRoom();
+        }
         return;
       }
+      hasLoadedRoom = true;
       setRoom(updatedRoom);
       setMessages(updatedMessages);
     });

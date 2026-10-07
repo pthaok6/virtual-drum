@@ -67,6 +67,7 @@ const SEED_PUBLIC_ROOMS: LiveRoom[] = [
 
 class RoomService {
   private localChannel: BroadcastChannel | null = null;
+  private eventSource: EventSource | null = null;
   private supabaseChannel: RealtimeChannel | null = null;
   private isSupabaseSubscribed = false;
   private pendingBroadcastQueue: BroadcastPayload[] = [];
@@ -85,8 +86,183 @@ class RoomService {
   constructor() {
     this.initBroadcastChannel();
     this.initStorageListener();
+    this.initServerSync();
     this.initSupabaseRealtime();
+    this.fetchRoomsFromServer();
   }
+
+  // ================= 1. SERVER SSE SYNC (ZERO DELAY ACROSS BROWSERS) =================
+
+  private initServerSync() {
+    if (typeof window === 'undefined' || !('EventSource' in window)) return;
+
+    try {
+      if (this.eventSource) {
+        this.eventSource.close();
+      }
+
+      this.eventSource = new EventSource('/api/live-rooms/events');
+
+      this.eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleServerEvent(data);
+        } catch (e) {
+          console.warn('Failed to parse SSE event:', e);
+        }
+      };
+
+      this.eventSource.onerror = () => {
+        // Browser handles auto-reconnect for EventSource
+      };
+    } catch (err) {
+      console.warn('EventSource initialization warning:', err);
+    }
+  }
+
+  private handleServerEvent(data: any) {
+    if (!data || !data.type) return;
+
+    switch (data.type) {
+      case 'ROOMS_UPDATED': {
+        if (Array.isArray(data.rooms)) {
+          this.setRoomsFromRemote(data.rooms);
+        }
+        if (data.room) {
+          this.mergeRoom(data.room);
+          this.notifyRoomsUpdated(this.getRooms());
+        }
+        break;
+      }
+
+      case 'ROOM_UPDATED': {
+        if (data.room) {
+          this.mergeRoom(data.room);
+          const messages = this.getMessages(data.room.id);
+          this.notifySingleRoomUpdated(data.room.id, data.room, messages);
+          this.notifyRoomsUpdated(this.getRooms());
+        }
+        break;
+      }
+
+      case 'ROOM_ENDED': {
+        if (data.roomId) {
+          const rooms = this.getRooms().filter((r) => r.id !== data.roomId);
+          this.saveRoomsToLocal(rooms);
+          this.clearMessages(data.roomId);
+          this.notifySingleRoomUpdated(data.roomId, null, []);
+          this.notifyRoomsUpdated(rooms);
+        }
+        break;
+      }
+
+      case 'CHAT_MESSAGE': {
+        if (data.roomId && data.message) {
+          const messages = this.getMessages(data.roomId);
+          if (!messages.some((m) => m.id === data.message.id)) {
+            const updated = [...messages, data.message].slice(-100);
+            this.saveMessagesToLocal(data.roomId, updated);
+            const room = this.getRoom(data.roomId);
+            this.notifySingleRoomUpdated(data.roomId, room, updated);
+          }
+        }
+        break;
+      }
+
+      case 'MEMBER_KICKED': {
+        if (data.roomId && data.kickedUserId) {
+          const listeners = this.kickedListeners.get(data.roomId);
+          if (listeners) {
+            listeners.forEach((cb) => cb(data.kickedUserId));
+          }
+          if (data.room) {
+            this.mergeRoom(data.room);
+          }
+          const room = this.getRoom(data.roomId);
+          const messages = this.getMessages(data.roomId);
+          this.notifySingleRoomUpdated(data.roomId, room, messages);
+          this.notifyRoomsUpdated(this.getRooms());
+        }
+        break;
+      }
+
+      case 'DRUM_HIT': {
+        if (data.roomId && data.hit) {
+          const listeners = this.drumHitListeners.get(data.roomId);
+          if (listeners) {
+            listeners.forEach((cb) => cb(data.hit));
+          }
+        }
+        break;
+      }
+
+      case 'MEDIA_STATE_CHANGED': {
+        if (data.room) {
+          this.mergeRoom(data.room);
+          const messages = this.getMessages(data.room.id);
+          this.notifySingleRoomUpdated(data.room.id, data.room, messages);
+          this.notifyRoomsUpdated(this.getRooms());
+        }
+        break;
+      }
+    }
+  }
+
+  public async fetchRoomsFromServer(): Promise<LiveRoom[]> {
+    try {
+      const res = await fetch('/api/live-rooms', { cache: 'no-store' });
+      if (res.ok) {
+        const remoteRooms = await res.json();
+        if (Array.isArray(remoteRooms) && remoteRooms.length > 0) {
+          this.setRoomsFromRemote(remoteRooms);
+          return this.getRooms();
+        }
+      }
+    } catch {
+      // Fallback to local storage if endpoint unavailable
+    }
+    return this.getRooms();
+  }
+
+  public async fetchMessagesFromServer(roomId: string): Promise<RoomChatMessage[]> {
+    try {
+      const res = await fetch(`/api/live-rooms/${roomId}/messages`, { cache: 'no-store' });
+      if (res.ok) {
+        const msgs = await res.json();
+        if (Array.isArray(msgs)) {
+          this.saveMessagesToLocal(roomId, msgs);
+          const room = this.getRoom(roomId);
+          this.notifySingleRoomUpdated(roomId, room, msgs);
+          return msgs;
+        }
+      }
+    } catch {}
+    return this.getMessages(roomId);
+  }
+
+  private setRoomsFromRemote(incomingRooms: LiveRoom[]) {
+    if (!Array.isArray(incomingRooms)) return;
+    const localRooms = this.getRooms();
+    const map = new Map<string, LiveRoom>();
+
+    localRooms.forEach((r) => map.set(r.id, r));
+    incomingRooms.forEach((r) => {
+      const existing = map.get(r.id);
+      if (
+        !existing ||
+        r.updatedAt >= existing.updatedAt ||
+        r.members.length !== existing.members.length
+      ) {
+        map.set(r.id, r);
+      }
+    });
+
+    const combined = Array.from(map.values());
+    this.saveRoomsToLocal(combined);
+    this.notifyRoomsUpdated(combined);
+  }
+
+  // ================= 2. LOCAL BROADCAST & STORAGE LISTENER =================
 
   private initBroadcastChannel() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -117,6 +293,8 @@ class RoomService {
     }
   }
 
+  // ================= 3. SUPABASE REALTIME (CLOUD BACKBONE) =================
+
   private initSupabaseRealtime() {
     const supabase = getSupabaseClient();
     if (!supabase) return;
@@ -124,7 +302,8 @@ class RoomService {
     try {
       this.supabaseChannel = supabase.channel('drum_rooms_global', {
         config: {
-          broadcast: { ack: true },
+          broadcast: { ack: false, self: false },
+          presence: { key: this.clientSessionId },
         },
       });
 
@@ -153,7 +332,7 @@ class RoomService {
               if (pending) this.sendToSupabase(pending);
             }
 
-            // Sync current active room if any
+            // Sync current active room or presence key
             this.syncPresence(this.currentTrackedRoom, this.currentTrackedMember);
 
             // Request sync from existing peers
@@ -212,7 +391,7 @@ class RoomService {
     }
   }
 
-  private handlePresenceLeave(leftPresences: Array<{ room?: LiveRoom }>) {
+  private handlePresenceLeave(_leftPresences: Array<{ room?: LiveRoom }>) {
     // Optional cleanup on peer disconnection
   }
 
@@ -264,6 +443,7 @@ class RoomService {
   }
 
   public requestSync() {
+    this.fetchRoomsFromServer();
     this.broadcast({
       type: 'SYNC_REQUEST',
       senderId: this.clientSessionId,
@@ -282,7 +462,6 @@ class RoomService {
       return true;
     } else {
       const current = rooms[idx];
-      // Update if incoming has newer timestamp or different member count
       if (
         incoming.updatedAt >= current.updatedAt ||
         incoming.members.length !== current.members.length ||
@@ -487,7 +666,14 @@ class RoomService {
       'system'
     );
 
-    // Sync presence & broadcast to other browsers
+    // 1. Post to local server relay (instant zero-delay sync across browsers)
+    fetch('/api/live-rooms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room: newRoom }),
+    }).catch(() => {});
+
+    // 2. Sync presence & broadcast to other peers
     this.syncPresence(newRoom, ownerMember);
     this.broadcast({ type: 'ROOMS_UPDATED', roomId: newRoomId, room: newRoom });
     this.notifyRoomsUpdated(updated);
@@ -534,6 +720,14 @@ class RoomService {
       this.saveRoomsToLocal(rooms);
 
       this.sendMessage(roomId, user, `👋 ${user.username} joined the room.`, 'system');
+
+      // Post join to server relay
+      fetch(`/api/live-rooms/${roomId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member: memberObj }),
+      }).catch(() => {});
+
       this.syncPresence(targetRoom, memberObj);
       this.broadcast({ type: 'ROOM_UPDATED', roomId, room: targetRoom });
       this.notifyRoomsUpdated(rooms);
@@ -565,6 +759,13 @@ class RoomService {
 
     // Stop presence tracking for this room
     this.syncPresence(null, null);
+
+    // Post leave to server relay
+    fetch(`/api/live-rooms/${roomId}/leave`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    }).catch(() => {});
 
     // If no members left and not seed room, clean up room
     if (room.members.length === 0 && !room.id.startsWith('room-acoustic-lounge')) {
@@ -631,6 +832,11 @@ class RoomService {
 
     this.syncPresence(null, null);
 
+    // Post delete to server relay
+    fetch(`/api/live-rooms/${roomId}`, {
+      method: 'DELETE',
+    }).catch(() => {});
+
     const remaining = rooms.filter((r) => r.id !== roomId);
     this.saveRoomsToLocal(remaining);
     this.clearMessages(roomId);
@@ -655,6 +861,13 @@ class RoomService {
     }
     room.updatedAt = Date.now();
     this.saveRoomsToLocal(rooms);
+
+    // Post kick to server relay
+    fetch(`/api/live-rooms/${roomId}/kick`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ownerId, targetUserId }),
+    }).catch(() => {});
 
     this.sendMessage(
       roomId,
@@ -697,6 +910,16 @@ class RoomService {
     member.isMuted = mute;
     room.updatedAt = Date.now();
     this.saveRoomsToLocal(rooms);
+
+    // Post media state to server relay
+    fetch(`/api/live-rooms/${roomId}/media`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: targetUserId,
+        mediaState: { isMuted: mute },
+      }),
+    }).catch(() => {});
 
     if (requestedByUserId === room.ownerId && targetUserId !== requestedByUserId) {
       this.sendMessage(
@@ -768,6 +991,14 @@ class RoomService {
 
     room.updatedAt = Date.now();
     this.saveRoomsToLocal(rooms);
+
+    // Post to server relay
+    fetch(`/api/live-rooms/${roomId}/media`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, mediaState: partial }),
+    }).catch(() => {});
+
     this.syncPresence(room, member);
     this.broadcast({ type: 'MEDIA_STATE_CHANGED', roomId, room });
     this.notifySingleRoomUpdated(roomId, room, this.getMessages(roomId));
@@ -788,6 +1019,14 @@ class RoomService {
 
     room.updatedAt = Date.now();
     this.saveRoomsToLocal(rooms);
+
+    // Post to server relay
+    fetch(`/api/live-rooms/${roomId}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ownerId, ...options }),
+    }).catch(() => {});
+
     this.syncPresence(room, null);
     this.broadcast({ type: 'ROOM_UPDATED', roomId, room });
     this.notifyRoomsUpdated(rooms);
@@ -829,6 +1068,13 @@ class RoomService {
     const updated = [...messages, newMsg].slice(-100);
     this.saveMessagesToLocal(roomId, updated);
 
+    // Post message to server relay
+    fetch(`/api/live-rooms/${roomId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: newMsg }),
+    }).catch(() => {});
+
     this.broadcast({ type: 'CHAT_MESSAGE', roomId, message: newMsg });
     const room = this.getRoom(roomId);
     this.notifySingleRoomUpdated(roomId, room, updated);
@@ -858,6 +1104,14 @@ class RoomService {
       velocity,
       timestamp: Date.now(),
     };
+
+    // Post drum hit to server relay
+    fetch(`/api/live-rooms/${roomId}/drum-hit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hit }),
+    }).catch(() => {});
+
     this.broadcast({ type: 'DRUM_HIT', roomId, hit });
   }
 
@@ -876,7 +1130,9 @@ class RoomService {
   public subscribeRooms(callback: (rooms: LiveRoom[]) => void): () => void {
     this.roomListeners.add(callback);
     callback(this.getRooms());
-    // Auto trigger sync on subscribe
+
+    // Immediately trigger server fetch and presence sync
+    this.fetchRoomsFromServer();
     this.requestSync();
 
     return () => {
@@ -893,6 +1149,8 @@ class RoomService {
     }
     this.singleRoomListeners.get(roomId)!.add(callback);
     callback(this.getRoom(roomId), this.getMessages(roomId));
+
+    this.fetchMessagesFromServer(roomId);
     this.requestSync();
 
     return () => {
