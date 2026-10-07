@@ -163,15 +163,24 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
     }
   };
 
-  const filteredRooms = rooms.filter((room) => {
+  const safeRooms = Array.isArray(rooms) ? rooms.filter(Boolean) : [];
+  const filteredRooms = safeRooms.filter((room) => {
+    if (!room || typeof room !== 'object') return false;
+    const name = String(room.name || '').toLowerCase();
+    const ownerName = String(room.ownerName || '').toLowerCase();
+    const desc = String(room.description || '').toLowerCase();
+    const genre = String(room.genre || 'All').toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
+
     const matchesSearch =
-      room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      room.ownerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (room.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+      !query ||
+      name.includes(query) ||
+      ownerName.includes(query) ||
+      desc.includes(query);
 
     const matchesGenre =
       selectedGenre === 'All' ||
-      room.genre.toLowerCase() === selectedGenre.toLowerCase();
+      genre === selectedGenre.toLowerCase();
 
     return matchesSearch && matchesGenre;
   });
@@ -318,9 +327,16 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredRooms.map((room) => {
-            const isFull = room.members.length >= room.maxMembers;
-            const isUserInRoom = user && room.members.some((m) => m.id === user.id);
-            const isUserOwner = user && room.ownerId === user.id;
+            const members = Array.isArray(room.members) ? room.members.filter(Boolean) : [];
+            const maxMembers = Number(room.maxMembers) || 8;
+            const isFull = members.length >= maxMembers;
+            const isUserInRoom = Boolean(user && members.some((m) => m && m.id === user.id));
+            const isUserOwner = Boolean(user && room.ownerId === user.id);
+            const roomName = room.name || 'Jam Room';
+            const roomGenre = room.genre || 'All';
+            const roomDesc = room.description || 'Live music jam and drum performance room.';
+            const ownerAvatar = room.ownerAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${room.ownerName || 'Host'}`;
+            const ownerName = room.ownerName || 'Host';
 
             return (
               <Card
@@ -332,7 +348,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
                       <Badge className="bg-rose-500/10 border-rose-500/30 text-rose-400 text-[10px] font-mono uppercase">
-                        {room.genre}
+                        {roomGenre}
                       </Badge>
                       {room.activeScreenShareUser && (
                         <Badge className="bg-emerald-500/10 border-emerald-500/30 text-emerald-400 text-[10px] flex items-center gap-1 font-mono">
@@ -351,18 +367,18 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                     <div className="flex items-center gap-1.5 text-xs font-mono">
                       <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                       <span className="text-zinc-300 font-bold">
-                        {room.members.length}/{room.maxMembers}
+                        {members.length}/{maxMembers}
                       </span>
                       <Users className="h-3.5 w-3.5 text-zinc-500" />
                     </div>
                   </div>
 
                   <h3 className="text-base font-bold text-white group-hover:text-rose-300 transition-colors line-clamp-1 mb-1">
-                    {room.name}
+                    {roomName}
                   </h3>
 
                   <p className="text-xs text-zinc-400 line-clamp-2 min-h-[32px] leading-relaxed">
-                    {room.description || 'Live music jam and drum performance room.'}
+                    {roomDesc}
                   </p>
                 </div>
 
@@ -371,13 +387,13 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                   {/* Host info */}
                   <div className="flex items-center gap-2.5 min-w-0">
                     <img
-                      src={room.ownerAvatar}
-                      alt={room.ownerName}
+                      src={ownerAvatar}
+                      alt={ownerName}
                       className="h-7 w-7 rounded-lg bg-zinc-900 border border-zinc-700 p-0.5 shrink-0"
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1 text-[11px] font-semibold text-zinc-200 truncate">
-                        <span>{room.ownerName}</span>
+                        <span>{ownerName}</span>
                         {isUserOwner && (
                           <span className="text-[9px] text-amber-400 bg-amber-400/10 px-1 rounded">
                             You
@@ -464,42 +480,36 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                 <Label htmlFor="room-genre" className="text-xs text-zinc-300">
                   Genre
                 </Label>
-                <Select value={newRoomGenre} onValueChange={setNewRoomGenre}>
-                  <SelectTrigger
-                    id="room-genre"
-                    className="border-zinc-800 bg-zinc-900 text-xs text-zinc-200"
-                  >
-                    <SelectValue placeholder="Select genre" />
-                  </SelectTrigger>
-                  <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-200">
-                    <SelectItem value="Rock">Rock</SelectItem>
-                    <SelectItem value="Acoustic">Acoustic</SelectItem>
-                    <SelectItem value="Electronic">Electronic</SelectItem>
-                    <SelectItem value="Jazz">Jazz</SelectItem>
-                    <SelectItem value="Pop">Pop</SelectItem>
-                    <SelectItem value="Free Jam">Free Jam</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  id="room-genre"
+                  value={newRoomGenre}
+                  onChange={(e) => setNewRoomGenre(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                >
+                  <option value="Rock">Rock</option>
+                  <option value="Acoustic">Acoustic</option>
+                  <option value="Electronic">Electronic</option>
+                  <option value="Jazz">Jazz</option>
+                  <option value="Pop">Pop</option>
+                  <option value="Free Jam">Free Jam</option>
+                </select>
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="room-max-members" className="text-xs text-zinc-300">
                   Max Capacity
                 </Label>
-                <Select value={newRoomMaxMembers} onValueChange={setNewRoomMaxMembers}>
-                  <SelectTrigger
-                    id="room-max-members"
-                    className="border-zinc-800 bg-zinc-900 text-xs text-zinc-200"
-                  >
-                    <SelectValue placeholder="Members" />
-                  </SelectTrigger>
-                  <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-200">
-                    <SelectItem value="2">2 Members (Duo)</SelectItem>
-                    <SelectItem value="4">4 Members (Band)</SelectItem>
-                    <SelectItem value="8">8 Members (Standard)</SelectItem>
-                    <SelectItem value="16">16 Members (Community)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  id="room-max-members"
+                  value={newRoomMaxMembers}
+                  onChange={(e) => setNewRoomMaxMembers(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-zinc-200 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                >
+                  <option value="2">2 Members (Duo)</option>
+                  <option value="4">4 Members (Band)</option>
+                  <option value="8">8 Members (Standard)</option>
+                  <option value="16">16 Members (Community)</option>
+                </select>
               </div>
             </div>
 

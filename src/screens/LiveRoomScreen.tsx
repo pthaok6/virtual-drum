@@ -306,7 +306,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
       } else {
         // Check if someone else is already sharing
         if (room?.activeScreenShareUser && room.activeScreenShareUser !== user.id) {
-          const presenter = room.members.find((m) => m.id === room.activeScreenShareUser);
+          const presenter = (room?.members || []).find((m) => m && m.id === room.activeScreenShareUser);
           alert(`${presenter?.username || 'Another participant'} is currently sharing screen. Please wait until they finish!`);
           return;
         }
@@ -419,8 +419,9 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
     );
   }
 
-  const presenterMember = room.members.find((m) => m.id === room.activeScreenShareUser);
-  const isSomeoneScreenSharing = Boolean(room.activeScreenShareUser);
+  const membersList = Array.isArray(room?.members) ? room.members.filter(Boolean) : [];
+  const presenterMember = membersList.find((m) => m && m.id === room?.activeScreenShareUser);
+  const isSomeoneScreenSharing = Boolean(room?.activeScreenShareUser);
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950 text-zinc-100 min-h-screen">
@@ -452,7 +453,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <Users className="h-3.5 w-3.5 text-zinc-400" />
-                  {room.members.length}/{room.maxMembers} participants
+                  {membersList.length}/{room.maxMembers || 8} participants
                 </span>
               </div>
             </div>
@@ -575,7 +576,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-purple-400" />
                 <h3 className="font-semibold text-sm text-zinc-200">
-                  Room Members ({room.members.length})
+                  Room Members ({membersList.length})
                 </h3>
               </div>
               <span className="text-[11px] text-zinc-400">
@@ -586,7 +587,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {room.members.map((member) => {
+              {membersList.map((member) => {
                 const isSelf = member.id === user?.id;
                 const isMemberOwner = member.role === 'owner';
                 const hasRecentHit = recentMemberHits[member.id];

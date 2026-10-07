@@ -240,24 +240,66 @@ class RoomService {
     return this.getMessages(roomId);
   }
 
+  public sanitizeRoom(r: any): LiveRoom | null {
+    if (!r || typeof r !== 'object' || !r.id) return null;
+    return {
+      id: String(r.id),
+      name: String(r.name || 'Drum Jam Room'),
+      description: String(r.description || 'Live drum jam and voice chat room.'),
+      genre: String(r.genre || 'All'),
+      ownerId: String(r.ownerId || 'host-system'),
+      ownerName: String(r.ownerName || 'Host'),
+      ownerAvatar: String(r.ownerAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${r.ownerName || 'Drummer'}`),
+      maxMembers: Math.min(16, Math.max(2, Number(r.maxMembers) || 8)),
+      isLocked: Boolean(r.isLocked),
+      members: Array.isArray(r.members)
+        ? r.members.filter(Boolean).map((m: any) => ({
+            id: String(m.id || ''),
+            username: String(m.username || 'Member'),
+            avatarUrl: String(m.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${m.username || 'Drummer'}`),
+            level: Number(m.level) || 1,
+            role: m.role === 'owner' ? 'owner' : 'member',
+            isMuted: Boolean(m.isMuted),
+            isCameraOn: Boolean(m.isCameraOn),
+            isScreenSharing: Boolean(m.isScreenSharing),
+            isSpeaking: Boolean(m.isSpeaking),
+            audioLevel: Number(m.audioLevel) || 0,
+            joinedAt: Number(m.joinedAt) || Date.now(),
+          }))
+        : [],
+      activeScreenShareUser: r.activeScreenShareUser ? String(r.activeScreenShareUser) : null,
+      createdAt: Number(r.createdAt) || Date.now(),
+      updatedAt: Number(r.updatedAt) || Date.now(),
+    };
+  }
+
   private setRoomsFromRemote(incomingRooms: LiveRoom[]) {
     if (!Array.isArray(incomingRooms)) return;
     const localRooms = this.getRooms();
     const map = new Map<string, LiveRoom>();
 
-    localRooms.forEach((r) => map.set(r.id, r));
+    localRooms.forEach((r) => {
+      const san = this.sanitizeRoom(r);
+      if (san) map.set(san.id, san);
+    });
+
     incomingRooms.forEach((r) => {
-      const existing = map.get(r.id);
+      const san = this.sanitizeRoom(r);
+      if (!san) return;
+      const existing = map.get(san.id);
       if (
         !existing ||
-        r.updatedAt >= existing.updatedAt ||
-        r.members.length !== existing.members.length
+        san.updatedAt >= existing.updatedAt ||
+        san.members.length !== existing.members.length
       ) {
-        map.set(r.id, r);
+        map.set(san.id, san);
       }
     });
 
     const combined = Array.from(map.values());
+    if (combined.length === 0) {
+      combined.push(...SEED_PUBLIC_ROOMS);
+    }
     this.saveRoomsToLocal(combined);
     this.notifyRoomsUpdated(combined);
   }
@@ -452,23 +494,24 @@ class RoomService {
   }
 
   public mergeRoom(incoming: LiveRoom): boolean {
-    if (!incoming || !incoming.id) return false;
+    const sanitized = this.sanitizeRoom(incoming);
+    if (!sanitized) return false;
     const rooms = this.getRooms();
-    const idx = rooms.findIndex((r) => r.id === incoming.id);
+    const idx = rooms.findIndex((r) => r.id === sanitized.id);
 
     if (idx === -1) {
-      const updated = [incoming, ...rooms];
+      const updated = [sanitized, ...rooms];
       this.saveRoomsToLocal(updated);
       return true;
     } else {
       const current = rooms[idx];
       if (
-        incoming.updatedAt >= current.updatedAt ||
-        incoming.members.length !== current.members.length ||
-        incoming.isLocked !== current.isLocked ||
-        incoming.activeScreenShareUser !== current.activeScreenShareUser
+        sanitized.updatedAt >= current.updatedAt ||
+        sanitized.members.length !== current.members.length ||
+        sanitized.isLocked !== current.isLocked ||
+        sanitized.activeScreenShareUser !== current.activeScreenShareUser
       ) {
-        rooms[idx] = incoming;
+        rooms[idx] = sanitized;
         this.saveRoomsToLocal(rooms);
         return true;
       }
@@ -606,15 +649,24 @@ class RoomService {
         this.saveRoomsToLocal(SEED_PUBLIC_ROOMS);
         return SEED_PUBLIC_ROOMS;
       }
-      return parsed;
+      const sanitized = parsed
+        .map((item) => this.sanitizeRoom(item))
+        .filter((r): r is LiveRoom => r !== null);
+      if (sanitized.length === 0) {
+        this.saveRoomsToLocal(SEED_PUBLIC_ROOMS);
+        return SEED_PUBLIC_ROOMS;
+      }
+      return sanitized;
     } catch {
       return SEED_PUBLIC_ROOMS;
     }
   }
 
   public getRoom(roomId: string): LiveRoom | null {
+    if (!roomId) return null;
     const rooms = this.getRooms();
-    return rooms.find((r) => r.id === roomId) || null;
+    const found = rooms.find((r) => r.id === roomId);
+    return found ? (this.sanitizeRoom(found) || found) : null;
   }
 
   public createRoom(

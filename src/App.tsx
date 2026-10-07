@@ -18,6 +18,7 @@ import { RoomsLobbyScreen } from './screens/RoomsLobbyScreen';
 import { LiveRoomScreen } from './screens/LiveRoomScreen';
 import { parseSharedRecordingFromUrl } from './services/wavExporter';
 import { recordingsStorage } from './services/recordingsStorage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenType>('home');
@@ -175,21 +176,28 @@ export default function App() {
           )}
 
           {currentScreen === 'rooms' && (
-            activeRoomId ? (
-              <LiveRoomScreen
-                roomId={activeRoomId}
-                onLeaveRoom={() => {
-                  setActiveRoomId(null);
-                }}
-              />
-            ) : (
-              <RoomsLobbyScreen
-                onNavigate={handleNavigate}
-                onJoinRoom={(roomId) => {
-                  setActiveRoomId(roomId);
-                }}
-              />
-            )
+            <ErrorBoundary
+              onReset={() => {
+                setActiveRoomId(null);
+                setCurrentScreen('home');
+              }}
+            >
+              {activeRoomId ? (
+                <LiveRoomScreen
+                  roomId={activeRoomId}
+                  onLeaveRoom={() => {
+                    setActiveRoomId(null);
+                  }}
+                />
+              ) : (
+                <RoomsLobbyScreen
+                  onNavigate={handleNavigate}
+                  onJoinRoom={(roomId) => {
+                    setActiveRoomId(roomId);
+                  }}
+                />
+              )}
+            </ErrorBoundary>
           )}
 
           {currentScreen === 'result' && gameResult && (
