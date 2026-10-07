@@ -7,6 +7,7 @@ import {
   DrumHitBroadcast,
 } from '../types';
 import { getSupabaseClient } from './supabase';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 const ROOMS_STORAGE_KEY = 'virtual_drum_active_rooms';
 const MESSAGES_STORAGE_PREFIX = 'virtual_drum_room_messages_';
@@ -20,13 +21,17 @@ interface BroadcastPayload {
     | 'MEMBER_KICKED'
     | 'CHAT_MESSAGE'
     | 'DRUM_HIT'
-    | 'MEDIA_STATE_CHANGED';
+    | 'MEDIA_STATE_CHANGED'
+    | 'SYNC_REQUEST'
+    | 'SYNC_RESPONSE';
   roomId?: string;
   room?: LiveRoom;
+  rooms?: LiveRoom[];
   message?: RoomChatMessage;
   hit?: DrumHitBroadcast;
   kickedUserId?: string;
   senderId?: string;
+  targetSenderId?: string;
 }
 
 // Initial demo public room so lobby is alive immediately
@@ -34,7 +39,7 @@ const SEED_PUBLIC_ROOMS: LiveRoom[] = [
   {
     id: 'room-acoustic-lounge',
     name: 'Acoustic Groove Lounge 🥁',
-    description: 'Phòng giao lưu nhạc mộc, chia sẻ nhịp beat và trò chuyện tự do.',
+    description: 'Acoustic jam lounge to share beats, talk, and perform freely.',
     genre: 'Acoustic',
     ownerId: 'host-system',
     ownerName: 'Groove Master (Bot Host)',
@@ -61,7 +66,14 @@ const SEED_PUBLIC_ROOMS: LiveRoom[] = [
 ];
 
 class RoomService {
-  private channel: BroadcastChannel | null = null;
+  private localChannel: BroadcastChannel | null = null;
+  private supabaseChannel: RealtimeChannel | null = null;
+  private isSupabaseSubscribed = false;
+  private pendingBroadcastQueue: BroadcastPayload[] = [];
+  private clientSessionId = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  private currentTrackedRoom: LiveRoom | null = null;
+  private currentTrackedMember: RoomMember | null = null;
+
   private roomListeners: Set<(rooms: LiveRoom[]) => void> = new Set();
   private singleRoomListeners: Map<
     string,
@@ -79,8 +91,8 @@ class RoomService {
   private initBroadcastChannel() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
-        this.channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
-        this.channel.onmessage = (event) => {
+        this.localChannel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+        this.localChannel.onmessage = (event) => {
           this.handleBroadcastMessage(event.data);
         };
       } catch (err) {
@@ -108,83 +120,278 @@ class RoomService {
   private initSupabaseRealtime() {
     const supabase = getSupabaseClient();
     if (!supabase) return;
+
     try {
-      const channel = supabase.channel('drum_rooms_global');
-      channel
+      this.supabaseChannel = supabase.channel('drum_rooms_global', {
+        config: {
+          broadcast: { ack: true },
+        },
+      });
+
+      this.supabaseChannel
         .on('broadcast', { event: 'room_event' }, ({ payload }) => {
           if (payload) {
             this.handleBroadcastMessage(payload);
           }
         })
-        .subscribe();
-    } catch {
-      // Supabase realtime is optional
+        .on('presence', { event: 'sync' }, () => {
+          this.handlePresenceSync();
+        })
+        .on('presence', { event: 'join' }, ({ newPresences }) => {
+          this.handlePresenceJoin(newPresences as Array<{ room?: LiveRoom }>);
+        })
+        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+          this.handlePresenceLeave(leftPresences as Array<{ room?: LiveRoom }>);
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            this.isSupabaseSubscribed = true;
+
+            // Flush pending broadcasts
+            while (this.pendingBroadcastQueue.length > 0) {
+              const pending = this.pendingBroadcastQueue.shift();
+              if (pending) this.sendToSupabase(pending);
+            }
+
+            // Sync current active room if any
+            this.syncPresence(this.currentTrackedRoom, this.currentTrackedMember);
+
+            // Request sync from existing peers
+            this.requestSync();
+
+            // Read existing presence state
+            this.handlePresenceSync();
+          } else {
+            this.isSupabaseSubscribed = false;
+          }
+        });
+    } catch (err) {
+      console.warn('Supabase realtime error:', err);
+    }
+  }
+
+  private handlePresenceSync() {
+    if (!this.supabaseChannel) return;
+    try {
+      const state = this.supabaseChannel.presenceState();
+      let changed = false;
+
+      for (const key in state) {
+        const presences = state[key] as Array<{ room?: LiveRoom }>;
+        if (Array.isArray(presences)) {
+          presences.forEach((p) => {
+            if (p.room && p.room.id) {
+              if (this.mergeRoom(p.room)) {
+                changed = true;
+              }
+            }
+          });
+        }
+      }
+
+      if (changed) {
+        this.notifyRoomsUpdated(this.getRooms());
+      }
+    } catch (err) {
+      console.warn('handlePresenceSync error:', err);
+    }
+  }
+
+  private handlePresenceJoin(newPresences: Array<{ room?: LiveRoom }>) {
+    if (!Array.isArray(newPresences)) return;
+    let changed = false;
+    newPresences.forEach((p) => {
+      if (p.room && p.room.id) {
+        if (this.mergeRoom(p.room)) {
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      this.notifyRoomsUpdated(this.getRooms());
+    }
+  }
+
+  private handlePresenceLeave(leftPresences: Array<{ room?: LiveRoom }>) {
+    // Optional cleanup on peer disconnection
+  }
+
+  public syncPresence(room: LiveRoom | null, member?: RoomMember | null) {
+    this.currentTrackedRoom = room;
+    this.currentTrackedMember = member || null;
+
+    if (!this.supabaseChannel || !this.isSupabaseSubscribed) return;
+
+    try {
+      this.supabaseChannel
+        .track({
+          sessionId: this.clientSessionId,
+          activeRoomId: room ? room.id : null,
+          room: room,
+          member: member || null,
+          timestamp: Date.now(),
+        })
+        .catch(() => {});
+    } catch {}
+  }
+
+  private sendToSupabase(payload: BroadcastPayload) {
+    if (this.supabaseChannel && this.isSupabaseSubscribed) {
+      this.supabaseChannel
+        .send({
+          type: 'broadcast',
+          event: 'room_event',
+          payload,
+        })
+        .catch(() => {});
+    } else {
+      this.pendingBroadcastQueue.push(payload);
     }
   }
 
   private broadcast(payload: BroadcastPayload) {
-    if (this.channel) {
+    // 1. Same-browser cross-tab broadcast
+    if (this.localChannel) {
       try {
-        this.channel.postMessage(payload);
+        this.localChannel.postMessage(payload);
       } catch (err) {
-        console.warn('Failed to post broadcast message:', err);
+        console.warn('Failed to post local broadcast:', err);
       }
     }
 
-    const supabase = getSupabaseClient();
-    if (supabase) {
-      try {
-        const channel = supabase.channel('drum_rooms_global');
-        channel.send({
-          type: 'broadcast',
-          event: 'room_event',
-          payload,
-        });
-      } catch {
-        // Ignore
+    // 2. Cross-browser / remote peer broadcast via Supabase
+    this.sendToSupabase(payload);
+  }
+
+  public requestSync() {
+    this.broadcast({
+      type: 'SYNC_REQUEST',
+      senderId: this.clientSessionId,
+    });
+    this.handlePresenceSync();
+  }
+
+  public mergeRoom(incoming: LiveRoom): boolean {
+    if (!incoming || !incoming.id) return false;
+    const rooms = this.getRooms();
+    const idx = rooms.findIndex((r) => r.id === incoming.id);
+
+    if (idx === -1) {
+      const updated = [incoming, ...rooms];
+      this.saveRoomsToLocal(updated);
+      return true;
+    } else {
+      const current = rooms[idx];
+      // Update if incoming has newer timestamp or different member count
+      if (
+        incoming.updatedAt >= current.updatedAt ||
+        incoming.members.length !== current.members.length ||
+        incoming.isLocked !== current.isLocked ||
+        incoming.activeScreenShareUser !== current.activeScreenShareUser
+      ) {
+        rooms[idx] = incoming;
+        this.saveRoomsToLocal(rooms);
+        return true;
       }
     }
+    return false;
   }
 
   private handleBroadcastMessage(payload: BroadcastPayload) {
     if (!payload || !payload.type) return;
 
     switch (payload.type) {
-      case 'ROOMS_UPDATED': {
-        const rooms = this.getRooms();
-        this.notifyRoomsUpdated(rooms);
+      case 'SYNC_REQUEST': {
+        if (payload.senderId && payload.senderId !== this.clientSessionId) {
+          const currentRooms = this.getRooms();
+          this.broadcast({
+            type: 'SYNC_RESPONSE',
+            senderId: this.clientSessionId,
+            targetSenderId: payload.senderId,
+            rooms: currentRooms,
+          });
+        }
         break;
       }
-      case 'ROOM_UPDATED':
-      case 'MEDIA_STATE_CHANGED': {
-        if (payload.roomId) {
-          const room = this.getRoom(payload.roomId);
-          const messages = this.getMessages(payload.roomId);
-          this.notifySingleRoomUpdated(payload.roomId, room, messages);
+
+      case 'SYNC_RESPONSE': {
+        if (!payload.targetSenderId || payload.targetSenderId === this.clientSessionId) {
+          if (Array.isArray(payload.rooms)) {
+            let changed = false;
+            payload.rooms.forEach((r) => {
+              if (this.mergeRoom(r)) changed = true;
+            });
+            if (changed) {
+              this.notifyRoomsUpdated(this.getRooms());
+            }
+          }
+        }
+        break;
+      }
+
+      case 'ROOMS_UPDATED': {
+        if (payload.room) {
+          this.mergeRoom(payload.room);
+        }
+        if (Array.isArray(payload.rooms)) {
+          payload.rooms.forEach((r) => this.mergeRoom(r));
+        }
+        this.notifyRoomsUpdated(this.getRooms());
+        break;
+      }
+
+      case 'ROOM_UPDATED': {
+        if (payload.room) {
+          this.mergeRoom(payload.room);
+          const messages = this.getMessages(payload.room.id);
+          this.notifySingleRoomUpdated(payload.room.id, payload.room, messages);
           this.notifyRoomsUpdated(this.getRooms());
         }
         break;
       }
+
       case 'ROOM_ENDED': {
         if (payload.roomId) {
+          const rooms = this.getRooms().filter((r) => r.id !== payload.roomId);
+          this.saveRoomsToLocal(rooms);
+          this.clearMessages(payload.roomId);
           this.notifySingleRoomUpdated(payload.roomId, null, []);
+          this.notifyRoomsUpdated(rooms);
+        }
+        break;
+      }
+
+      case 'CHAT_MESSAGE': {
+        if (payload.roomId && payload.message) {
+          const messages = this.getMessages(payload.roomId);
+          if (!messages.some((m) => m.id === payload.message!.id)) {
+            const updated = [...messages, payload.message].slice(-100);
+            this.saveMessagesToLocal(payload.roomId, updated);
+            const room = this.getRoom(payload.roomId);
+            this.notifySingleRoomUpdated(payload.roomId, room, updated);
+          }
+        }
+        break;
+      }
+
+      case 'MEDIA_STATE_CHANGED': {
+        if (payload.room) {
+          this.mergeRoom(payload.room);
+          const messages = this.getMessages(payload.room.id);
+          this.notifySingleRoomUpdated(payload.room.id, payload.room, messages);
           this.notifyRoomsUpdated(this.getRooms());
         }
         break;
       }
-      case 'CHAT_MESSAGE': {
-        if (payload.roomId) {
-          const room = this.getRoom(payload.roomId);
-          const messages = this.getMessages(payload.roomId);
-          this.notifySingleRoomUpdated(payload.roomId, room, messages);
-        }
-        break;
-      }
+
       case 'MEMBER_KICKED': {
         if (payload.roomId && payload.kickedUserId) {
           const listeners = this.kickedListeners.get(payload.roomId);
           if (listeners) {
             listeners.forEach((cb) => cb(payload.kickedUserId!));
+          }
+          if (payload.room) {
+            this.mergeRoom(payload.room);
           }
           const room = this.getRoom(payload.roomId);
           const messages = this.getMessages(payload.roomId);
@@ -193,6 +400,7 @@ class RoomService {
         }
         break;
       }
+
       case 'DRUM_HIT': {
         if (payload.roomId && payload.hit) {
           const listeners = this.drumHitListeners.get(payload.roomId);
@@ -255,7 +463,7 @@ class RoomService {
     const newRoom: LiveRoom = {
       id: newRoomId,
       name: name.trim() || `${owner.username}'s Jam Room`,
-      description: description.trim() || 'Phòng biểu diễn trống và trò chuyện trực tuyến.',
+      description: description.trim() || 'Live drum jam and voice chat room.',
       genre: genre || 'All',
       ownerId: owner.id,
       ownerName: owner.username,
@@ -275,10 +483,12 @@ class RoomService {
     this.sendMessage(
       newRoomId,
       owner,
-      `🎉 Chủ phòng ${owner.username} đã tạo phòng "${newRoom.name}". Chào mừng các thành viên!`,
+      `🎉 Host ${owner.username} created room "${newRoom.name}". Welcome!`,
       'system'
     );
 
+    // Sync presence & broadcast to other browsers
+    this.syncPresence(newRoom, ownerMember);
     this.broadcast({ type: 'ROOMS_UPDATED', roomId: newRoomId, room: newRoom });
     this.notifyRoomsUpdated(updated);
     return newRoom;
@@ -292,22 +502,23 @@ class RoomService {
     const targetRoom = rooms.find((r) => r.id === roomId);
 
     if (!targetRoom) {
-      return { success: false, error: 'Phòng không tồn tại hoặc đã bị giải tán.' };
+      return { success: false, error: 'Room does not exist or has ended.' };
     }
     if (targetRoom.isLocked) {
-      return { success: false, error: 'Phòng hiện đang bị khóa bởi chủ sở hữu.' };
+      return { success: false, error: 'This room is currently locked by the host.' };
     }
     if (targetRoom.members.length >= targetRoom.maxMembers) {
-      // Check if user is already in members
       const existing = targetRoom.members.find((m) => m.id === user.id);
       if (!existing) {
-        return { success: false, error: 'Phòng đã đủ số lượng thành viên tối đa.' };
+        return { success: false, error: 'Room has reached maximum capacity.' };
       }
     }
 
     const alreadyJoined = targetRoom.members.some((m) => m.id === user.id);
+    let memberObj = targetRoom.members.find((m) => m.id === user.id);
+
     if (!alreadyJoined) {
-      const newMember: RoomMember = {
+      memberObj = {
         id: user.id,
         username: user.username,
         avatarUrl: user.avatarUrl,
@@ -318,13 +529,16 @@ class RoomService {
         isScreenSharing: false,
         joinedAt: Date.now(),
       };
-      targetRoom.members.push(newMember);
+      targetRoom.members.push(memberObj);
       targetRoom.updatedAt = Date.now();
       this.saveRoomsToLocal(rooms);
 
-      this.sendMessage(roomId, user, `👋 ${user.username} đã tham gia phòng.`, 'system');
+      this.sendMessage(roomId, user, `👋 ${user.username} joined the room.`, 'system');
+      this.syncPresence(targetRoom, memberObj);
       this.broadcast({ type: 'ROOM_UPDATED', roomId, room: targetRoom });
       this.notifyRoomsUpdated(rooms);
+    } else {
+      this.syncPresence(targetRoom, memberObj);
     }
 
     const messages = this.getMessages(roomId);
@@ -339,7 +553,7 @@ class RoomService {
 
     const room = rooms[roomIdx];
     const departingMember = room.members.find((m) => m.id === userId);
-    const memberName = departingMember?.username || 'Thành viên';
+    const memberName = departingMember?.username || 'Member';
 
     // Remove member
     room.members = room.members.filter((m) => m.id !== userId);
@@ -348,6 +562,9 @@ class RoomService {
     if (room.activeScreenShareUser === userId) {
       room.activeScreenShareUser = null;
     }
+
+    // Stop presence tracking for this room
+    this.syncPresence(null, null);
 
     // If no members left and not seed room, clean up room
     if (room.members.length === 0 && !room.id.startsWith('room-acoustic-lounge')) {
@@ -378,7 +595,7 @@ class RoomService {
           totalScore: 0,
           createdAt: 0,
         },
-        `👑 Chủ phòng cũ đã rời đi. ${newOwner.username} hiện là Chủ sở hữu mới của phòng!`,
+        `👑 Host left. ${newOwner.username} is now the new room Host!`,
         'system'
       );
     } else {
@@ -393,7 +610,7 @@ class RoomService {
           totalScore: 0,
           createdAt: 0,
         },
-        `🚪 ${memberName} đã rời khỏi phòng.`,
+        `🚪 ${memberName} left the room.`,
         'system'
       );
     }
@@ -412,6 +629,8 @@ class RoomService {
     const target = rooms.find((r) => r.id === roomId);
     if (!target || target.ownerId !== ownerId) return false;
 
+    this.syncPresence(null, null);
+
     const remaining = rooms.filter((r) => r.id !== roomId);
     this.saveRoomsToLocal(remaining);
     this.clearMessages(roomId);
@@ -428,7 +647,7 @@ class RoomService {
     if (!room || room.ownerId !== ownerId || targetUserId === ownerId) return false;
 
     const target = room.members.find((m) => m.id === targetUserId);
-    const targetName = target?.username || 'Thành viên';
+    const targetName = target?.username || 'Member';
 
     room.members = room.members.filter((m) => m.id !== targetUserId);
     if (room.activeScreenShareUser === targetUserId) {
@@ -448,11 +667,11 @@ class RoomService {
         totalScore: 0,
         createdAt: 0,
       },
-      `⛔ Chủ phòng đã mời ${targetName} ra khỏi phòng.`,
+      `⛔ Host removed ${targetName} from the room.`,
       'system'
     );
 
-    this.broadcast({ type: 'MEMBER_KICKED', roomId, kickedUserId: targetUserId });
+    this.broadcast({ type: 'MEMBER_KICKED', roomId, kickedUserId: targetUserId, room });
     this.notifyRoomsUpdated(rooms);
     this.notifySingleRoomUpdated(roomId, room, this.getMessages(roomId));
     return true;
@@ -468,7 +687,6 @@ class RoomService {
     const room = rooms.find((r) => r.id === roomId);
     if (!room) return false;
 
-    // Allowed if requested by owner or target muting self
     if (room.ownerId !== requestedByUserId && targetUserId !== requestedByUserId) {
       return false;
     }
@@ -492,7 +710,7 @@ class RoomService {
           totalScore: 0,
           createdAt: 0,
         },
-        `🔇 Chủ phòng đã ${mute ? 'tắt' : 'bật'} mic của ${member.username}.`,
+        `🔇 Host ${mute ? 'muted' : 'unmuted'} ${member.username}'s microphone.`,
         'system'
       );
     }
@@ -540,7 +758,7 @@ class RoomService {
             totalScore: 0,
             createdAt: 0,
           },
-          `🖥️ ${member.username} đang chia sẻ màn hình.`,
+          `🖥️ ${member.username} is sharing their screen.`,
           'system'
         );
       } else if (room.activeScreenShareUser === userId) {
@@ -550,6 +768,7 @@ class RoomService {
 
     room.updatedAt = Date.now();
     this.saveRoomsToLocal(rooms);
+    this.syncPresence(room, member);
     this.broadcast({ type: 'MEDIA_STATE_CHANGED', roomId, room });
     this.notifySingleRoomUpdated(roomId, room, this.getMessages(roomId));
   }
@@ -569,6 +788,7 @@ class RoomService {
 
     room.updatedAt = Date.now();
     this.saveRoomsToLocal(rooms);
+    this.syncPresence(room, null);
     this.broadcast({ type: 'ROOM_UPDATED', roomId, room });
     this.notifyRoomsUpdated(rooms);
     this.notifySingleRoomUpdated(roomId, room, this.getMessages(roomId));
@@ -606,7 +826,6 @@ class RoomService {
       timestamp: Date.now(),
     };
 
-    // Keep up to 100 recent messages per room
     const updated = [...messages, newMsg].slice(-100);
     this.saveMessagesToLocal(roomId, updated);
 
@@ -657,6 +876,9 @@ class RoomService {
   public subscribeRooms(callback: (rooms: LiveRoom[]) => void): () => void {
     this.roomListeners.add(callback);
     callback(this.getRooms());
+    // Auto trigger sync on subscribe
+    this.requestSync();
+
     return () => {
       this.roomListeners.delete(callback);
     };
@@ -671,6 +893,7 @@ class RoomService {
     }
     this.singleRoomListeners.get(roomId)!.add(callback);
     callback(this.getRoom(roomId), this.getMessages(roomId));
+    this.requestSync();
 
     return () => {
       this.singleRoomListeners.get(roomId)?.delete(callback);

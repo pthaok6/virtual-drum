@@ -205,7 +205,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           <div className="flex items-center gap-2.5">
             <Sparkles className="h-4 w-4 text-amber-400 shrink-0" />
             <span>
-              Bạn đang chơi dưới tư cách <strong>Khách</strong>. Điểm số lượt chơi này không được lưu vào Bảng xếp hạng.
+              You are playing as <strong>Guest</strong>. This score will not be saved to the Leaderboard.
             </span>
           </div>
           <Button
@@ -214,7 +214,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
             onClick={openAuthModal}
             className="rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shrink-0 px-3 py-1 cursor-pointer"
           >
-            Đăng nhập để lưu điểm
+            Sign in to save score
           </Button>
         </div>
       )}

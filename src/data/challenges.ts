@@ -29,7 +29,7 @@ function generatePattern(
 
 export const CHALLENGES: RhythmChallenge[] = [
   // ==========================================
-  // EASY LEVEL (Dễ: 75 - 84 BPM)
+  // EASY LEVEL (75 - 84 BPM)
   // ==========================================
   {
     id: 'beginner-beat',
@@ -102,7 +102,7 @@ export const CHALLENGES: RhythmChallenge[] = [
   },
 
   // ==========================================
-  // MEDIUM LEVEL (Trung bình: 96 - 120 BPM)
+  // MEDIUM LEVEL (96 - 120 BPM)
   // ==========================================
   {
     id: 'basic-rock',
@@ -181,7 +181,7 @@ export const CHALLENGES: RhythmChallenge[] = [
   },
 
   // ==========================================
-  // HARD LEVEL (Khó: 128 - 140 BPM)
+  // HARD LEVEL (128 - 140 BPM)
   // ==========================================
   {
     id: 'fast-beat',
@@ -258,7 +258,7 @@ export const CHALLENGES: RhythmChallenge[] = [
   },
 
   // ==========================================
-  // EXPERT LEVEL (Cực Khó: 160 - 174 BPM)
+  // EXPERT LEVEL (160 - 174 BPM)
   // ==========================================
   {
     id: 'metal-fury',

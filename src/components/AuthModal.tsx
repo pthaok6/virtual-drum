@@ -49,11 +49,11 @@ export const AuthModal: React.FC = () => {
     setSuccessMessage(null);
 
     if (!email || !email.includes('@')) {
-      setErrorMessage('Vui lòng nhập địa chỉ email hợp lệ.');
+      setErrorMessage('Please enter a valid email address.');
       return;
     }
     if (!password || password.length < 6) {
-      setErrorMessage('Mật khẩu phải có ít nhất 6 ký tự.');
+      setErrorMessage('Password must be at least 6 characters.');
       return;
     }
 
@@ -62,16 +62,16 @@ export const AuthModal: React.FC = () => {
       if (tab === 'register') {
         const displayName = username.trim() || email.split('@')[0];
         await register(email, displayName, password);
-        setSuccessMessage('Tạo tài khoản thành công!');
+        setSuccessMessage('Account created successfully!');
       } else {
         await login(email, password);
-        setSuccessMessage('Đăng nhập thành công!');
+        setSuccessMessage('Signed in successfully!');
       }
       setTimeout(() => {
         setSuccessMessage(null);
       }, 1500);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+      const msg = err instanceof Error ? err.message : 'An error occurred. Please try again.';
       setErrorMessage(msg);
     } finally {
       setSubmitting(false);
@@ -95,12 +95,12 @@ export const AuthModal: React.FC = () => {
             </div>
             <div>
               <DialogTitle className="text-base font-bold text-white tracking-tight">
-                {isAuthenticated && user ? 'Hồ Sơ Người Chơi' : 'Tài Khoản Người Chơi'}
+                {isAuthenticated && user ? 'Player Profile' : 'Player Account'}
               </DialogTitle>
               <DialogDescription className="text-xs text-zinc-400">
                 {isAuthenticated && user
-                  ? 'Quản lý thông tin tài khoản và tiến trình chơi của bạn'
-                  : 'Đăng nhập để lưu điểm cao lên Bảng xếp hạng và lưu trữ Thư viện'}
+                  ? 'Manage your account information and gameplay stats'
+                  : 'Sign in to save scores to the Leaderboard and access Recordings'}
               </DialogDescription>
             </div>
           </div>
@@ -140,10 +140,10 @@ export const AuthModal: React.FC = () => {
               <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3.5 text-xs text-zinc-400 space-y-1.5">
                 <div className="flex items-center gap-1.5 font-semibold text-emerald-400">
                   <ShieldCheck className="h-4 w-4" />
-                  <span>Tài khoản đang hoạt động</span>
+                  <span>Active Account</span>
                 </div>
                 <p>
-                  Điểm số từ các vòng Rhythm Challenge và các bản thu từ Free Play sẽ được đồng bộ và lưu trữ tự động.
+                  Scores from Rhythm Challenges and recordings from Free Play will be synced and stored automatically.
                 </p>
               </div>
 
@@ -156,7 +156,7 @@ export const AuthModal: React.FC = () => {
                   className="flex items-center gap-2 rounded-xl border-zinc-800 bg-zinc-900 text-rose-400 hover:bg-rose-950/30 hover:border-rose-800 text-xs px-4"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span>Đăng xuất</span>
+                  <span>Sign Out</span>
                 </Button>
                 <Button
                   id="auth-close-btn"
@@ -164,7 +164,7 @@ export const AuthModal: React.FC = () => {
                   onClick={closeAuthModal}
                   className="rounded-xl bg-zinc-100 font-bold text-zinc-950 hover:bg-white text-xs px-4"
                 >
-                  Đóng
+                  Close
                 </Button>
               </div>
             </div>
@@ -187,7 +187,7 @@ export const AuthModal: React.FC = () => {
                   }`}
                 >
                   <LogIn className="h-3.5 w-3.5" />
-                  <span>Đăng Nhập</span>
+                  <span>Sign In</span>
                 </button>
                 <button
                   id="auth-tab-register"
@@ -203,7 +203,7 @@ export const AuthModal: React.FC = () => {
                   }`}
                 >
                   <UserPlus className="h-3.5 w-3.5" />
-                  <span>Đăng Ký Tài Khoản</span>
+                  <span>Register</span>
                 </button>
               </div>
 
@@ -224,7 +224,7 @@ export const AuthModal: React.FC = () => {
                 {tab === 'register' && (
                   <div className="space-y-1.5">
                     <Label htmlFor="auth-username" className="text-xs text-zinc-300">
-                      Tên hiển thị / Nickname
+                      Display Name / Nickname
                     </Label>
                     <Input
                       id="auth-username"
@@ -256,10 +256,10 @@ export const AuthModal: React.FC = () => {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="auth-password" className="text-xs text-zinc-300">
-                      Mật khẩu
+                      Password
                     </Label>
                     {tab === 'register' && (
-                      <span className="text-[10px] text-zinc-500">Tối thiểu 6 ký tự</span>
+                      <span className="text-[10px] text-zinc-500">At least 6 characters</span>
                     )}
                   </div>
                   <Input
@@ -280,16 +280,16 @@ export const AuthModal: React.FC = () => {
                   className="w-full mt-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-500/25 hover:from-rose-600 hover:to-amber-600 transition-all cursor-pointer"
                 >
                   {submitting
-                    ? 'Đang xử lý...'
+                    ? 'Processing...'
                     : tab === 'login'
-                    ? 'Đăng Nhập'
-                    : 'Tạo Tài Khoản'}
+                    ? 'Sign In'
+                    : 'Create Account'}
                 </Button>
               </form>
 
               <div className="mt-4 text-center">
                 <span className="text-[11px] text-zinc-500">
-                  {tab === 'login' ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? '}
+                  {tab === 'login' ? "Don't have an account? " : 'Already have an account? '}
                   <button
                     type="button"
                     onClick={() => {
@@ -298,7 +298,7 @@ export const AuthModal: React.FC = () => {
                     }}
                     className="text-rose-400 font-semibold hover:underline cursor-pointer"
                   >
-                    {tab === 'login' ? 'Đăng ký ngay' : 'Đăng nhập'}
+                    {tab === 'login' ? 'Register now' : 'Sign in'}
                   </button>
                 </span>
               </div>

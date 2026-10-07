@@ -85,7 +85,7 @@ export class SupabaseAuthAdapter implements IAuthAdapter {
   public async login(email: string, password: string): Promise<UserProfile> {
     const supabase = getSupabaseClient();
     if (!supabase) {
-      throw new Error('Supabase chưa được cấu hình. Vui lòng kiểm tra Supabase URL và Anon Key.');
+      throw new Error('Supabase is not configured. Please check your Supabase URL and Anon Key.');
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -95,16 +95,16 @@ export class SupabaseAuthAdapter implements IAuthAdapter {
 
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
-        throw new Error('Email hoặc mật khẩu không chính xác.');
+        throw new Error('Incorrect email or password.');
       }
       if (error.message.includes('Email not confirmed')) {
-        throw new Error('Email chưa được xác nhận. Vui lòng kiểm tra hộp thư hoặc tắt Email Confirmation trong Supabase Auth Settings.');
+        throw new Error('Email has not been confirmed. Please check your inbox or disable Email Confirmation in Supabase Auth Settings.');
       }
-      throw new Error(`Đăng nhập thất bại: ${error.message}`);
+      throw new Error(`Sign in failed: ${error.message}`);
     }
 
     if (!data.user) {
-      throw new Error('Không nhận được thông tin người dùng từ Supabase.');
+      throw new Error('User information was not returned by Supabase.');
     }
 
     const profile = await this.getCurrentUser();
@@ -131,7 +131,7 @@ export class SupabaseAuthAdapter implements IAuthAdapter {
   ): Promise<UserProfile> {
     const supabase = getSupabaseClient();
     if (!supabase) {
-      throw new Error('Supabase chưa được cấu hình. Vui lòng cấu hình URL và Anon Key.');
+      throw new Error('Supabase is not configured. Please configure your URL and Anon Key.');
     }
 
     const cleanUsername = username.trim() || email.split('@')[0] || 'Drummer';
@@ -152,16 +152,16 @@ export class SupabaseAuthAdapter implements IAuthAdapter {
 
     if (error) {
       if (error.message.includes('User already registered')) {
-        throw new Error('Email này đã được đăng ký. Vui lòng chuyển sang Đăng nhập.');
+        throw new Error('This email is already registered. Please switch to Sign In.');
       }
       if (error.message.includes('Password should be')) {
-        throw new Error('Mật khẩu quá ngắn hoặc không đủ bảo mật.');
+        throw new Error('Password is too short or does not meet security requirements.');
       }
-      throw new Error(`Đăng ký thất bại: ${error.message}`);
+      throw new Error(`Registration failed: ${error.message}`);
     }
 
     if (!data.user) {
-      throw new Error('Không thể tạo người dùng trên Supabase.');
+      throw new Error('Unable to create user on Supabase.');
     }
 
     // Try to insert directly into public.profiles table
@@ -210,7 +210,7 @@ export class SupabaseAuthAdapter implements IAuthAdapter {
   ): Promise<UserProfile> {
     const supabase = getSupabaseClient();
     if (!supabase) {
-      throw new Error('Supabase chưa được cấu hình.');
+      throw new Error('Supabase is not configured.');
     }
 
     const currentProfile = await this.getCurrentUser();

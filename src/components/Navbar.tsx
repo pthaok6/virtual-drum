@@ -164,12 +164,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             ) : (
               <>
                 <User className="h-4 w-4 text-zinc-400" />
-                <span className="font-medium text-zinc-300">Khách</span>
+                <span className="font-medium text-zinc-300">Guest</span>
                 <Badge
                   variant="outline"
                   className="border-rose-500/30 bg-rose-500/10 text-rose-400 text-[10px] px-1.5 py-0 font-semibold ml-0.5"
                 >
-                  Đăng nhập
+                  Sign In
                 </Badge>
               </>
             )}

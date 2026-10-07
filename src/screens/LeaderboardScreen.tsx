@@ -257,7 +257,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
               Top Percussionists • {CHALLENGES.find((c) => c.id === selectedTrack)?.title} ({entries.length} Players)
             </span>
             <span className="text-[11px] text-zinc-400">
-              Mỗi tài khoản hiển thị điểm số kỷ lục cao nhất
+              Each player displays their highest record score
             </span>
           </CardHeader>
 

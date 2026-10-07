@@ -66,7 +66,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
   const [currentPlayheadMs, setCurrentPlayheadMs] = useState<number>(0);
   const [recordingElapsedMs, setRecordingElapsedMs] = useState<number>(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
-  const [isLoopMode, setIsLoopMode] = useState<boolean>(false); // Default false: Single Playback (Chỉ phát lại 1 lần)
+  const [isLoopMode, setIsLoopMode] = useState<boolean>(false); // Default false: Single Playback (Plays once)
   const [trimFeedback, setTrimFeedback] = useState<string | null>(null);
   const [isSavedToLibrary, setIsSavedToLibrary] = useState<boolean>(false);
 
@@ -272,7 +272,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
   const handleSaveToLibrary = () => {
     if (recordedHits.length === 0 || loopDurationMs <= 0) return;
     if (!isAuthenticated || !user || user.id.startsWith('guest-')) {
-      alert('Tài khoản khách chỉ chơi và nghe thử, không thể lưu vào thư viện! Vui lòng đăng nhập để lưu trữ bản thu của bạn.');
+      alert('Guest accounts can only play and preview recordings, but cannot save to the library! Please sign in to save your recordings.');
       openAuthModal();
       return;
     }
@@ -339,7 +339,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
       const lastPlayhead = lastPlayheadRef.current;
 
       // ==========================================
-      // SINGLE PLAYBACK MODE (Chỉ phát lại 1 lần)
+      // SINGLE PLAYBACK MODE (Plays Once)
       // ==========================================
       if (!isLoopModeRef.current) {
         if (elapsed >= dur) {
@@ -387,7 +387,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
       }
 
       // ==========================================
-      // CONTINUOUS LOOP MODE (Vòng lặp tuần hoàn)
+      // CONTINUOUS LOOP MODE (Repeat indefinitely)
       // ==========================================
       const playhead = elapsed % dur;
       const hits = recordedHitsRef.current;

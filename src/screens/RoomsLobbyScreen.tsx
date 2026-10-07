@@ -18,6 +18,7 @@ import {
   MonitorUp,
   MessageSquare,
   Mic,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -45,7 +46,7 @@ interface RoomsLobbyScreenProps {
   onJoinRoom: (roomId: string) => void;
 }
 
-const GENRES = ['Tất cả', 'Rock', 'Acoustic', 'Electronic', 'Jazz', 'Pop', 'Jam Tự Do'];
+const GENRES = ['All', 'Rock', 'Acoustic', 'Electronic', 'Jazz', 'Pop', 'Free Jam'];
 
 export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
   onNavigate,
@@ -54,7 +55,8 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
   const { user, isAuthenticated, openAuthModal } = useAuth();
   const [rooms, setRooms] = useState<LiveRoom[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('Tất cả');
+  const [selectedGenre, setSelectedGenre] = useState('All');
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Create room modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -65,11 +67,31 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Initial sync
+    roomService.requestSync();
+
     const unsub = roomService.subscribeRooms((updatedRooms) => {
       setRooms(updatedRooms);
     });
-    return () => unsub();
+
+    // Auto sync periodically so rooms created on other browsers appear automatically
+    const syncInterval = setInterval(() => {
+      roomService.requestSync();
+    }, 3500);
+
+    return () => {
+      unsub();
+      clearInterval(syncInterval);
+    };
   }, []);
+
+  const handleRefresh = () => {
+    setIsSyncing(true);
+    roomService.requestSync();
+    setTimeout(() => {
+      setIsSyncing(false);
+    }, 600);
+  };
 
   const handleOpenCreateModal = () => {
     if (!isAuthenticated || !user) {
@@ -79,7 +101,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
     setNewRoomName(`${user.username}'s Drum Jam Room`);
     setNewRoomGenre('Rock');
     setNewRoomMaxMembers('8');
-    setNewRoomDesc('Phòng tập luyện nhịp điệu, bật mic giao lưu và chia sẻ màn hình!');
+    setNewRoomDesc('Rhythm practice room: turn on mic, chat, and share your screen!');
     setCreateError(null);
     setIsCreateOpen(true);
   };
@@ -91,7 +113,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
       return;
     }
     if (!newRoomName.trim()) {
-      setCreateError('Vui lòng nhập tên phòng.');
+      setCreateError('Please enter a room name.');
       return;
     }
 
@@ -114,11 +136,11 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
       return;
     }
     if (room.isLocked) {
-      alert('Phòng này đang bị khóa bởi chủ phòng.');
+      alert('This room is currently locked by the host.');
       return;
     }
     if (room.members.length >= room.maxMembers && !room.members.some((m) => m.id === user.id)) {
-      alert('Phòng đã đầy số lượng thành viên tối đa.');
+      alert('The room has reached maximum capacity.');
       return;
     }
 
@@ -126,7 +148,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
     if (res.success) {
       onJoinRoom(room.id);
     } else {
-      alert(res.error || 'Không thể tham gia phòng.');
+      alert(res.error || 'Unable to join the room.');
     }
   };
 
@@ -137,9 +159,8 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
       (room.description || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesGenre =
-      selectedGenre === 'Tất cả' ||
-      room.genre.toLowerCase() === selectedGenre.toLowerCase() ||
-      room.genre === 'All';
+      selectedGenre === 'All' ||
+      room.genre.toLowerCase() === selectedGenre.toLowerCase();
 
     return matchesSearch && matchesGenre;
   });
@@ -155,7 +176,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-400">
               <Radio className="h-3.5 w-3.5 animate-pulse" />
-              <span>Phòng Trực Tuyến Thời Gian Thực</span>
+              <span>Realtime Multiplayer Rooms</span>
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
@@ -163,23 +184,23 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
             </h1>
 
             <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
-              Tạo phòng biểu diễn, bật <strong>Micro thoại</strong>, trò chuyện <strong>Live Chat</strong>, chia sẻ{' '}
-              <strong>Màn hình</strong> và cùng bạn bè hoà tấu nhịp trống trên trình duyệt theo thời gian thực!
+              Create jam rooms, turn on <strong>Voice Mic</strong>, chat in <strong>Live Chat</strong>, share your{' '}
+              <strong>Screen</strong>, and jam on virtual drums together in browser real-time!
             </p>
 
             {/* Feature Pills */}
             <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-zinc-400">
               <span className="flex items-center gap-1 rounded-md bg-zinc-800/80 px-2.5 py-1 border border-zinc-700/60 text-zinc-300">
-                <Mic className="h-3 w-3 text-rose-400" /> Bật Mic giao lưu
+                <Mic className="h-3 w-3 text-rose-400" /> Voice Chat
               </span>
               <span className="flex items-center gap-1 rounded-md bg-zinc-800/80 px-2.5 py-1 border border-zinc-700/60 text-zinc-300">
-                <MonitorUp className="h-3 w-3 text-emerald-400" /> Chia sẻ màn hình
+                <MonitorUp className="h-3 w-3 text-emerald-400" /> Screen Sharing
               </span>
               <span className="flex items-center gap-1 rounded-md bg-zinc-800/80 px-2.5 py-1 border border-zinc-700/60 text-zinc-300">
-                <MessageSquare className="h-3 w-3 text-amber-400" /> Trò chuyện Realtime
+                <MessageSquare className="h-3 w-3 text-amber-400" /> Live Chat
               </span>
               <span className="flex items-center gap-1 rounded-md bg-zinc-800/80 px-2.5 py-1 border border-zinc-700/60 text-zinc-300">
-                <Shield className="h-3 w-3 text-blue-400" /> Quyền Chủ Phòng
+                <Shield className="h-3 w-3 text-blue-400" /> Host Controls
               </span>
             </div>
           </div>
@@ -193,7 +214,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
               className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 px-6 py-3.5 text-sm font-bold text-white shadow-xl shadow-rose-500/25 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
               <Plus className="h-5 w-5" />
-              <span>Tạo Phòng Mới</span>
+              <span>Create New Room</span>
             </Button>
           </div>
         </div>
@@ -205,7 +226,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
           <div className="flex items-center gap-2.5">
             <Sparkles className="h-4 w-4 text-amber-400 shrink-0" />
             <span>
-              Bạn đang ở chế độ <strong>Khách</strong>. Vui lòng đăng nhập để tạo phòng riêng của bạn hoặc tham gia phòng cùng các drummer khác!
+              You are currently browsing as <strong>Guest</strong>. Please sign in to create your own room or join other drummers!
             </span>
           </div>
           <Button
@@ -214,7 +235,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
             onClick={openAuthModal}
             className="rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shrink-0 px-4 py-1.5 cursor-pointer"
           >
-            Đăng nhập ngay
+            Sign In Now
           </Button>
         </div>
       )}
@@ -239,17 +260,31 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
           ))}
         </div>
 
-        {/* Search Input */}
-        <div className="relative min-w-[260px] md:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
-          <Input
-            id="lobby-search-input"
-            type="text"
-            placeholder="Tìm theo tên phòng, chủ phòng..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 rounded-xl border-zinc-800 bg-zinc-900/90 text-xs text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-rose-500"
-          />
+        {/* Search Input & Refresh Button */}
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-[240px] md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+            <Input
+              id="lobby-search-input"
+              type="text"
+              placeholder="Search by room name, host..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 rounded-xl border-zinc-800 bg-zinc-900/90 text-xs text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-rose-500"
+            />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            title="Refresh realtime room list"
+            className="rounded-xl border-zinc-800 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs px-3 py-2 flex items-center gap-1.5 shrink-0"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin text-rose-400' : 'text-zinc-400'}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
         </div>
       </div>
 
@@ -257,16 +292,16 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
       {filteredRooms.length === 0 ? (
         <Card className="rounded-3xl border-zinc-800 bg-zinc-900/40 p-12 text-center text-zinc-400">
           <Headphones className="h-12 w-12 mx-auto mb-3 text-zinc-600 animate-pulse" />
-          <h3 className="text-base font-bold text-white mb-1">Chưa có phòng nào trong danh mục này</h3>
+          <h3 className="text-base font-bold text-white mb-1">No rooms found in this category</h3>
           <p className="text-xs text-zinc-400 max-w-sm mx-auto mb-6">
-            Hãy là người đầu tiên tạo phòng để mời bạn bè vào giao lưu, bật mic và cùng nhau đánh trống!
+            Be the first to create a jam room, invite friends, voice chat, and jam on drums together!
           </p>
           <Button
             type="button"
             onClick={handleOpenCreateModal}
             className="rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-5 py-2.5 cursor-pointer"
           >
-            Tạo phòng ngay
+            Create Room Now
           </Button>
         </Card>
       ) : (
@@ -294,6 +329,12 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                           <span>Screen Live</span>
                         </Badge>
                       )}
+                      {room.isLocked && (
+                        <Badge className="bg-amber-500/10 border-amber-500/30 text-amber-400 text-[10px] flex items-center gap-1 font-mono">
+                          <Lock className="h-2.5 w-2.5" />
+                          <span>Locked</span>
+                        </Badge>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5 text-xs font-mono">
@@ -310,7 +351,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                   </h3>
 
                   <p className="text-xs text-zinc-400 line-clamp-2 min-h-[32px] leading-relaxed">
-                    {room.description || 'Phòng giao lưu âm nhạc và biểu diễn trống.'}
+                    {room.description || 'Live music jam and drum performance room.'}
                   </p>
                 </div>
 
@@ -328,12 +369,12 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                         <span>{room.ownerName}</span>
                         {isUserOwner && (
                           <span className="text-[9px] text-amber-400 bg-amber-400/10 px-1 rounded">
-                            Bạn
+                            You
                           </span>
                         )}
                       </div>
                       <span className="text-[10px] text-zinc-500 flex items-center gap-0.5">
-                        <Shield className="h-2.5 w-2.5 text-amber-400" /> Chủ phòng
+                        <Shield className="h-2.5 w-2.5 text-amber-400" /> Host
                       </span>
                     </div>
                   </div>
@@ -353,7 +394,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                         : 'bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/20 group-hover:translate-x-0.5'
                     }`}
                   >
-                    <span>{isUserInRoom ? 'Tiếp tục' : isFull ? 'Đã đầy' : 'Tham gia'}</span>
+                    <span>{isUserInRoom ? 'Continue' : isFull ? 'Full' : 'Join'}</span>
                     <ArrowRight className="h-3.5 w-3.5 ml-1" />
                   </Button>
                 </div>
@@ -376,10 +417,10 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
               </div>
               <div>
                 <DialogTitle className="text-base font-bold text-white">
-                  Tạo Phòng Trực Tuyến Mới
+                  Create New Live Room
                 </DialogTitle>
                 <DialogDescription className="text-xs text-zinc-400">
-                  Bạn sẽ là Chủ sở hữu (Host) của phòng này với đầy đủ quyền quản lý
+                  You will be the Host of this room with full moderation controls
                 </DialogDescription>
               </div>
             </div>
@@ -394,14 +435,14 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
 
             <div className="space-y-1.5">
               <Label htmlFor="room-name" className="text-xs text-zinc-300">
-                Tên Phòng
+                Room Name *
               </Label>
               <Input
                 id="room-name"
                 type="text"
                 value={newRoomName}
                 onChange={(e) => setNewRoomName(e.target.value)}
-                placeholder="VD: Rock Jam Session Night 🎸"
+                placeholder="e.g. Rock Jam Session Night 🎸"
                 className="border-zinc-800 bg-zinc-900 text-xs focus-visible:ring-rose-500"
                 required
               />
@@ -410,14 +451,14 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="room-genre" className="text-xs text-zinc-300">
-                  Thể Loại Nhạc
+                  Genre
                 </Label>
                 <Select value={newRoomGenre} onValueChange={setNewRoomGenre}>
                   <SelectTrigger
                     id="room-genre"
                     className="border-zinc-800 bg-zinc-900 text-xs text-zinc-200"
                   >
-                    <SelectValue placeholder="Chọn thể loại" />
+                    <SelectValue placeholder="Select genre" />
                   </SelectTrigger>
                   <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-200">
                     <SelectItem value="Rock">Rock</SelectItem>
@@ -425,27 +466,27 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                     <SelectItem value="Electronic">Electronic</SelectItem>
                     <SelectItem value="Jazz">Jazz</SelectItem>
                     <SelectItem value="Pop">Pop</SelectItem>
-                    <SelectItem value="Jam Tự Do">Jam Tự Do</SelectItem>
+                    <SelectItem value="Free Jam">Free Jam</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="room-max-members" className="text-xs text-zinc-300">
-                  Số Lượng Tối Đa
+                  Max Capacity
                 </Label>
                 <Select value={newRoomMaxMembers} onValueChange={setNewRoomMaxMembers}>
                   <SelectTrigger
                     id="room-max-members"
                     className="border-zinc-800 bg-zinc-900 text-xs text-zinc-200"
                   >
-                    <SelectValue placeholder="Số người" />
+                    <SelectValue placeholder="Members" />
                   </SelectTrigger>
                   <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-200">
-                    <SelectItem value="2">2 Người (Song tấu)</SelectItem>
-                    <SelectItem value="4">4 Người (Ban nhạc)</SelectItem>
-                    <SelectItem value="8">8 Người (Tiêu chuẩn)</SelectItem>
-                    <SelectItem value="16">16 Người (Cộng đồng)</SelectItem>
+                    <SelectItem value="2">2 Members (Duo)</SelectItem>
+                    <SelectItem value="4">4 Members (Band)</SelectItem>
+                    <SelectItem value="8">8 Members (Standard)</SelectItem>
+                    <SelectItem value="16">16 Members (Community)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -453,14 +494,14 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
 
             <div className="space-y-1.5">
               <Label htmlFor="room-desc" className="text-xs text-zinc-300">
-                Mô Tả Phòng (Tùy chọn)
+                Room Description (Optional)
               </Label>
               <Input
                 id="room-desc"
                 type="text"
                 value={newRoomDesc}
                 onChange={(e) => setNewRoomDesc(e.target.value)}
-                placeholder="VD: Cùng nhau luyện nhịp, chia sẻ mẹo chơi trống..."
+                placeholder="e.g. Practicing beats, sharing tips, and having fun..."
                 className="border-zinc-800 bg-zinc-900 text-xs focus-visible:ring-rose-500"
               />
             </div>
@@ -472,14 +513,14 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                 onClick={() => setIsCreateOpen(false)}
                 className="border-zinc-800 bg-zinc-900 text-xs text-zinc-300 hover:bg-zinc-800"
               >
-                Hủy
+                Cancel
               </Button>
               <Button
                 id="submit-create-room-btn"
                 type="submit"
                 className="rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 text-xs font-bold text-white shadow-lg shadow-rose-500/25 hover:from-rose-600 hover:to-amber-600 cursor-pointer"
               >
-                Tạo & Vào Phòng
+                Create & Enter Room
               </Button>
             </DialogFooter>
           </form>

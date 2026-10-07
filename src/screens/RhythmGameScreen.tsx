@@ -59,7 +59,7 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
     challenge.notes.map((n) => ({ ...n, hit: false }))
   );
 
-  // User can toggle Beat Highway (thanh hướng dẫn nốt rơi); default is false (ẩn/bỏ đi theo yêu cầu)
+  // User can toggle Beat Highway; default is false (hidden by default)
   const [showBeatHighway, setShowBeatHighway] = useState<boolean>(false);
 
   const [score, setScore] = useState(0);
@@ -553,11 +553,11 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
             size="sm"
             onClick={() => setShowBeatHighway((v) => !v)}
             className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white cursor-pointer"
-            title="Bật/Tắt thanh hướng dẫn nhịp rơi"
+            title="Toggle Beat Highway"
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-400" />
             <span className="hidden sm:inline">
-              {showBeatHighway ? 'Ẩn thanh nhịp rơi' : 'Hiện thanh nhịp rơi'}
+              {showBeatHighway ? 'Hide Beat Highway' : 'Show Beat Highway'}
             </span>
           </Button>
         </div>
@@ -570,7 +570,7 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
         className="mt-2 gap-0 [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-zinc-900 [&_[data-slot=progress-indicator]]:bg-gradient-to-r [&_[data-slot=progress-indicator]]:from-rose-500 [&_[data-slot=progress-indicator]]:to-amber-500"
       />
 
-      {/* Falling Note Lane Highway (Ẩn mặc định theo yêu cầu của user) */}
+      {/* Falling Note Lane Highway (Hidden by default) */}
       {showBeatHighway && (
         <div className="mt-3">
           <FallingNoteLane

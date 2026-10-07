@@ -654,7 +654,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
               size="sm"
               onClick={toggleGlowMode}
               className="flex items-center gap-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-750 px-2.5 py-1 text-xs font-semibold text-zinc-200 transition-all shadow cursor-pointer"
-              title="Chuyển đổi độ sáng viền beat (Sáng Neon / Siêu sáng / Dịu nhẹ)"
+              title="Toggle beat frame brightness (Neon Glow / Ultra Bright / Soft Glow)"
             >
               <Sun
                 className={`h-3.5 w-3.5 ${
@@ -667,10 +667,10 @@ export const CameraView: React.FC<CameraViewProps> = ({
               />
               <span className="hidden sm:inline">
                 {padGlowMode === 'ultra'
-                  ? '☀️ Siêu sáng'
+                  ? '☀️ Ultra Bright'
                   : padGlowMode === 'neon'
-                  ? '✨ Sáng Neon'
-                  : '🌙 Dịu nhẹ'}
+                  ? '✨ Neon Glow'
+                  : '🌙 Soft Glow'}
               </span>
             </Button>
 

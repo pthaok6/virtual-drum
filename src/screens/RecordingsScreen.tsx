@@ -196,7 +196,7 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
     if (!file) return;
 
     if (!isAuthenticated || !user || user.id.startsWith('guest-')) {
-      alert('Tài khoản khách không thể nhập bản thu vào Thư viện. Vui lòng đăng nhập!');
+      alert('Guest accounts cannot import tracks to the Library. Please sign in!');
       openAuthModal();
       e.target.value = '';
       return;
@@ -225,7 +225,7 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
     if (!user || user.id.startsWith('guest-')) return;
     const updated = recordingsStorage.loadDemoRecordingsForUser(user.id);
     setRecordings(updated);
-    setShareFeedback('Đã nạp bản beat mẫu vào thư viện của bạn!');
+    setShareFeedback('Loaded demo beats into your library!');
     setTimeout(() => setShareFeedback(null), 3000);
   };
 
@@ -281,8 +281,8 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
               </h1>
               <p className="text-xs sm:text-sm text-zinc-400">
                 {isAuthenticated && user
-                  ? `Thư viện bản thu âm riêng của tài khoản ${user.username}. Tải file WAV hoặc chia sẻ cho bạn bè.`
-                  : 'Nghe thử các bản thu mẫu. Đăng nhập để lưu trữ các bản thu của riêng bạn.'}
+                  ? `Personal recordings library of ${user.username}. Download WAV files or share with friends.`
+                  : 'Listen to demo drum tracks. Sign in to save and manage your own recordings.'}
               </p>
             </div>
           </div>
@@ -338,7 +338,7 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-rose-400 shrink-0" />
             <span>
-              Bạn đang xem Thư viện dưới tư cách <strong>Khách</strong>. Tài khoản khách không thể lưu các bản thu mới từ Free Play.
+              You are browsing the Library as <strong>Guest</strong>. Guest accounts cannot save new recordings from Free Play.
             </span>
           </div>
           <Button
@@ -347,7 +347,7 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
             onClick={openAuthModal}
             className="rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs shrink-0 px-3 py-1 cursor-pointer"
           >
-            Đăng nhập để lưu bản thu
+            Sign in to save beats
           </Button>
         </div>
       )}
@@ -420,13 +420,13 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
           <Disc3 className="h-12 w-12 mx-auto mb-3 text-zinc-600 animate-pulse" />
           <h3 className="text-base font-bold text-white mb-1">
             {isAuthenticated && user
-              ? `Tài khoản "${user.username}" chưa có bản thu nào`
-              : 'Chưa có bản thu nào trong thư viện'}
+              ? `Account "${user.username}" has no recordings yet`
+              : 'No recordings in library'}
           </h3>
           <p className="text-xs text-zinc-400 max-w-sm mx-auto mb-6">
             {isAuthenticated && user
-              ? 'Chuyển sang chế độ Free Play để thu âm beat trống riêng của bạn, hoặc tải 2 bản beat mẫu để nghe thử!'
-              : 'Chuyển sang chế độ Free Play để bắt đầu thu âm beat trống!'}
+              ? 'Switch to Free Play to record your own drum beat, or load demo beats to listen!'
+              : 'Switch to Free Play to start recording drum beats!'}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
@@ -434,7 +434,7 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
               onClick={() => onNavigate('free-play')}
               className="rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-5 py-2 cursor-pointer"
             >
-              Bắt đầu thu âm Free Play
+              Start Recording in Free Play
             </Button>
             {isAuthenticated && user && (
               <Button
@@ -443,7 +443,7 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
                 onClick={handleLoadDemoTracks}
                 className="rounded-xl border-zinc-700 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 text-xs px-4 py-2 cursor-pointer"
               >
-                Tải bản beat mẫu (Demo Beats)
+                Load Demo Beats
               </Button>
             )}
           </div>

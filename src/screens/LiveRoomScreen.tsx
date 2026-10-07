@@ -96,7 +96,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
   useEffect(() => {
     const unsubRoom = roomService.subscribeRoom(roomId, (updatedRoom, updatedMessages) => {
       if (!updatedRoom) {
-        alert('Phòng đã kết thúc hoặc không còn tồn tại.');
+        alert('Room has ended or no longer exists.');
         onLeaveRoom();
         return;
       }
@@ -106,7 +106,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
 
     const unsubKicked = roomService.onKicked(roomId, (kickedUserId) => {
       if (user && kickedUserId === user.id) {
-        alert('Bạn đã bị chủ phòng mời ra khỏi phòng.');
+        alert('You have been removed from the room by the host.');
         onLeaveRoom();
       }
     });
@@ -140,6 +140,13 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
       unsubDrum();
     };
   }, [roomId, user, onLeaveRoom]);
+
+  // Continuously maintain presence state across all browsers
+  useEffect(() => {
+    if (room && currentMember) {
+      roomService.syncPresence(room, currentMember);
+    }
+  }, [room, currentMember]);
 
   // Sync state if owner muting local user from afar
   useEffect(() => {
@@ -259,7 +266,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
       }
     } catch (err) {
       console.error('Error toggling mic:', err);
-      alert('Không thể truy cập Microphone. Vui lòng kiểm tra quyền thiết bị trên trình duyệt.');
+      alert('Cannot access microphone. Please check browser permissions.');
     }
   };
 
@@ -280,7 +287,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
       }
     } catch (err) {
       console.error('Error toggling camera:', err);
-      alert('Không thể mở Camera. Vui lòng kiểm tra quyền thiết bị trên trình duyệt.');
+      alert('Cannot access camera. Please check browser permissions.');
     }
   };
 
@@ -295,7 +302,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
         // Check if someone else is already sharing
         if (room?.activeScreenShareUser && room.activeScreenShareUser !== user.id) {
           const presenter = room.members.find((m) => m.id === room.activeScreenShareUser);
-          alert(`${presenter?.username || 'Thành viên khác'} đang chia sẻ màn hình. Vui lòng đợi họ dừng trước!`);
+          alert(`${presenter?.username || 'Another participant'} is currently sharing screen. Please wait until they finish!`);
           return;
         }
 
@@ -315,7 +322,6 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
       }
     } catch (err) {
       console.error('Error sharing screen:', err);
-      // User cancelled display media picker
     }
   };
 
@@ -349,7 +355,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
 
   const handleKickMember = (targetUserId: string, targetName: string) => {
     if (!isOwner || !user) return;
-    if (confirm(`Bạn có chắc chắn muốn mời "${targetName}" ra khỏi phòng?`)) {
+    if (confirm(`Are you sure you want to remove "${targetName}" from the room?`)) {
       roomService.kickMember(roomId, user.id, targetUserId);
     }
   };
@@ -381,7 +387,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
     if (!isOwner || !user) return;
     if (
       confirm(
-        '⚠️ Bạn có chắc chắn muốn giải tán phòng? Tất cả thành viên sẽ rời khỏi phòng ngay lập tức.'
+        '⚠️ Are you sure you want to end this room? All participants will be disconnected immediately.'
       )
     ) {
       roomService.endRoom(roomId, user.id);
@@ -400,9 +406,9 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
         <Radio className="h-12 w-12 text-rose-500 animate-pulse mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Đang tải thông tin phòng...</h2>
+        <h2 className="text-xl font-bold text-white mb-2">Loading room information...</h2>
         <Button onClick={onLeaveRoom} variant="outline" className="border-zinc-700 text-zinc-300">
-          Quay lại danh sách phòng
+          Back to Rooms Lobby
         </Button>
       </div>
     );
@@ -429,19 +435,19 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                 </Badge>
                 {room.isLocked && (
                   <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[10px] flex items-center gap-1">
-                    <Lock className="h-3 w-3" /> Đã khóa
+                    <Lock className="h-3 w-3" /> Locked
                   </Badge>
                 )}
               </div>
               <div className="flex items-center gap-3 text-xs text-zinc-400 mt-0.5">
                 <span className="flex items-center gap-1">
                   <Crown className="h-3.5 w-3.5 text-amber-400" />
-                  Chủ phòng: <strong className="text-zinc-200">{room.ownerName}</strong>
+                  Host: <strong className="text-zinc-200">{room.ownerName}</strong>
                 </span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <Users className="h-3.5 w-3.5 text-zinc-400" />
-                  {room.members.length}/{room.maxMembers} người đang tham gia
+                  {room.members.length}/{room.maxMembers} participants
                 </span>
               </div>
             </div>
@@ -458,7 +464,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                   className="border-zinc-700 bg-zinc-800/80 text-zinc-300 hover:text-white hover:bg-zinc-700 text-xs flex items-center gap-1.5"
                 >
                   <Settings className="h-3.5 w-3.5" />
-                  <span>Cài đặt phòng</span>
+                  <span>Room Settings</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -467,7 +473,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                   className="border-rose-900/60 bg-rose-950/40 text-rose-300 hover:bg-rose-900/60 text-xs flex items-center gap-1.5"
                 >
                   <Shield className="h-3.5 w-3.5" />
-                  <span>Giải tán phòng</span>
+                  <span>End Room</span>
                 </Button>
               </>
             )}
@@ -479,7 +485,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
               className="bg-red-600/90 hover:bg-red-600 text-white text-xs flex items-center gap-1.5 shadow-sm"
             >
               <LogOut className="h-3.5 w-3.5" />
-              <span>Rời phòng</span>
+              <span>Leave Room</span>
             </Button>
           </div>
         </div>
@@ -506,12 +512,12 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                 <MonitorUp className="h-4 w-4 text-sky-400 animate-pulse" />
                 <span className="text-xs font-semibold text-zinc-200">
                   {presenterMember
-                    ? `${presenterMember.username} đang chia sẻ màn hình`
-                    : 'Đang chia sẻ màn hình'}
+                    ? `${presenterMember.username} is sharing screen`
+                    : 'Sharing screen'}
                 </span>
                 {presenterMember?.id === user?.id && (
                   <Badge className="bg-sky-500/20 text-sky-300 border-sky-500/30 text-[10px] px-1.5 py-0">
-                    Bạn
+                    You
                   </Badge>
                 )}
               </div>
@@ -526,7 +532,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                     className="text-xs h-8 flex items-center gap-1.5 bg-red-600/90 hover:bg-red-600 shadow-md"
                   >
                     <MonitorOff className="h-3.5 w-3.5" />
-                    <span>Dừng chia sẻ</span>
+                    <span>Stop Sharing</span>
                   </Button>
                 </div>
               )}
@@ -539,9 +545,9 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-purple-500 to-rose-500 text-white shadow-xl shadow-purple-500/20 mb-3">
                   <Music className="h-6 w-6" />
                 </div>
-                <h2 className="text-xl font-bold text-white">Sân Khấu Jam Trực Tuyến</h2>
+                <h2 className="text-xl font-bold text-white">Live Jam Stage</h2>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Bật mic giao lưu, gõ trống ngẫu hứng và chia sẻ màn hình cùng mọi người trong phòng!
+                  Turn on your mic, jam on drums, and share your screen with everyone in the room!
                 </p>
                 <div className="flex items-center gap-2 mt-4">
                   <Button
@@ -551,7 +557,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                     className="border-zinc-700 bg-zinc-800/80 text-zinc-200 hover:text-white hover:bg-zinc-700 text-xs flex items-center gap-1.5"
                   >
                     <MonitorUp className="h-3.5 w-3.5 text-sky-400" />
-                    <span>Chia sẻ màn hình</span>
+                    <span>Share Screen</span>
                   </Button>
                 </div>
               </div>
@@ -564,13 +570,13 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-purple-400" />
                 <h3 className="font-semibold text-sm text-zinc-200">
-                  Thành viên trong phòng ({room.members.length})
+                  Room Members ({room.members.length})
                 </h3>
               </div>
               <span className="text-[11px] text-zinc-400">
                 {isOwner
-                  ? '👑 Bạn là Chủ phòng: có quyền tắt mic hoặc mời thành viên rời phòng'
-                  : 'Giao lưu trực tuyến'}
+                  ? '👑 You are Host: full moderation controls to mute or remove members'
+                  : 'Live Jamming'}
               </span>
             </div>
 
@@ -644,18 +650,18 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                           {member.username}
                         </span>
                         {isSelf && (
-                          <span className="text-[10px] text-zinc-400 font-normal">(Bạn)</span>
+                          <span className="text-[10px] text-zinc-400 font-normal">(You)</span>
                         )}
                       </div>
 
                       <div className="flex items-center justify-center gap-1.5 mt-1">
                         {isMemberOwner ? (
                           <Badge className="bg-amber-400/10 text-amber-300 border-amber-400/30 text-[9px] px-1.5 py-0 flex items-center gap-1">
-                            <Crown className="h-2.5 w-2.5" /> Chủ phòng
+                            <Crown className="h-2.5 w-2.5" /> Host
                           </Badge>
                         ) : (
                           <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700 text-[9px] px-1.5 py-0">
-                            Thành viên
+                            Member
                           </Badge>
                         )}
                         <span className="text-[10px] text-zinc-400">Lv.{member.level}</span>
@@ -680,7 +686,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                         <button
                           type="button"
                           onClick={() => handleToggleMuteMember(member.id, member.isMuted)}
-                          title={member.isMuted ? 'Bật mic thành viên' : 'Tắt mic thành viên'}
+                          title={member.isMuted ? 'Unmute member' : 'Mute member'}
                           className={`p-1 rounded-lg border text-xs transition-colors cursor-pointer ${
                             member.isMuted
                               ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
@@ -696,7 +702,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                         <button
                           type="button"
                           onClick={() => handleKickMember(member.id, member.username)}
-                          title="Mời ra khỏi phòng"
+                          title="Remove from room"
                           className="p-1 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer"
                         >
                           <UserX className="h-3.5 w-3.5" />
@@ -714,10 +720,10 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Music className="h-4 w-4 text-rose-400" />
-                <h3 className="font-semibold text-sm text-zinc-200">Gõ Trống Tương Tác Cùng Phòng</h3>
+                <h3 className="font-semibold text-sm text-zinc-200">Interactive Jam Drum Pads</h3>
               </div>
               <span className="text-[11px] text-zinc-400">
-                Nhấp chuột hoặc nhấn phím <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">Space</kbd>, <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">J</kbd>, <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">K</kbd>, <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">U</kbd>, <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">I</kbd>
+                Click pads or press keys: <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">Space</kbd>, <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">J</kbd>, <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">K</kbd>, <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">U</kbd>, <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-300">I</kbd>
               </span>
             </div>
 
@@ -759,12 +765,12 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
               {isMicOn ? (
                 <>
                   <Mic className="h-4 w-4 animate-pulse text-white" />
-                  <span>Mic Đang Bật</span>
+                  <span>Mic Active</span>
                 </>
               ) : (
                 <>
                   <MicOff className="h-4 w-4 text-rose-400" />
-                  <span>Bật Mic</span>
+                  <span>Turn On Mic</span>
                 </>
               )}
             </Button>
@@ -782,12 +788,12 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
               {isCameraOn ? (
                 <>
                   <Video className="h-4 w-4 text-white" />
-                  <span>Camera Bật</span>
+                  <span>Camera Active</span>
                 </>
               ) : (
                 <>
                   <VideoOff className="h-4 w-4 text-zinc-400" />
-                  <span>Bật Camera</span>
+                  <span>Turn On Camera</span>
                 </>
               )}
             </Button>
@@ -805,12 +811,12 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
               {isScreenSharing ? (
                 <>
                   <MonitorOff className="h-4 w-4 text-white" />
-                  <span>Dừng Chia Sẻ</span>
+                  <span>Stop Sharing</span>
                 </>
               ) : (
                 <>
                   <MonitorUp className="h-4 w-4 text-sky-400" />
-                  <span>Chia Sẻ Màn Hình</span>
+                  <span>Share Screen</span>
                 </>
               )}
             </Button>
@@ -823,10 +829,10 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
           <div className="p-3 border-b border-zinc-800 bg-zinc-900/80 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Smile className="h-4 w-4 text-purple-400" />
-              <h3 className="font-semibold text-sm text-zinc-200">Trò Chuyện Trực Tuyến</h3>
+              <h3 className="font-semibold text-sm text-zinc-200">Live Room Chat</h3>
             </div>
             <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700 text-[10px]">
-              {messages.length} tin nhắn
+              {messages.length} messages
             </Badge>
           </div>
 
@@ -838,7 +844,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                 type="button"
                 onClick={() => handleSendReaction(emoji)}
                 className="h-8 w-8 rounded-lg bg-zinc-800/60 hover:bg-zinc-800 hover:scale-110 active:scale-95 flex items-center justify-center text-sm transition-all cursor-pointer"
-                title={`Gửi biểu cảm ${emoji}`}
+                title={`Send ${emoji} reaction`}
               >
                 {emoji}
               </button>
@@ -853,8 +859,8 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center text-zinc-500 p-4">
                 <Smile className="h-8 w-8 mb-2 opacity-50" />
-                <p>Chưa có tin nhắn nào.</p>
-                <p className="text-[11px]">Hãy gửi lời chào đến mọi người trong phòng!</p>
+                <p>No messages yet.</p>
+                <p className="text-[11px]">Say hello to everyone in the room!</p>
               </div>
             ) : (
               messages.map((msg) => {
@@ -927,7 +933,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
             <Input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Nhập tin nhắn..."
+              placeholder="Type a message..."
               className="h-9 bg-zinc-950 border-zinc-700 text-xs text-white placeholder:text-zinc-500 focus-visible:ring-purple-500"
             />
             <Button
@@ -949,17 +955,17 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-white text-lg">
                 <Crown className="h-5 w-5 text-amber-400" />
-                Cài Đặt Phòng (Chủ Sở Hữu)
+                Room Settings (Host)
               </DialogTitle>
               <DialogDescription className="text-zinc-400 text-xs">
-                Bạn có thể cập nhật thông tin phòng hoặc thay đổi trạng thái khóa phòng.
+                Update room details or toggle room lock status.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-2">
               <div className="space-y-1.5">
                 <Label htmlFor="room-name-edit" className="text-xs text-zinc-300">
-                  Tên phòng
+                  Room Name
                 </Label>
                 <Input
                   id="room-name-edit"
@@ -971,7 +977,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
 
               <div className="space-y-1.5">
                 <Label htmlFor="room-desc-edit" className="text-xs text-zinc-300">
-                  Mô tả phòng
+                  Room Description
                 </Label>
                 <Input
                   id="room-desc-edit"
@@ -984,10 +990,10 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
               <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
                 <div>
                   <Label htmlFor="room-lock-edit" className="text-xs font-semibold text-zinc-200">
-                    Khóa phòng
+                    Lock Room
                   </Label>
                   <p className="text-[11px] text-zinc-400">
-                    Khi bật, người ngoài sẽ không thể tham gia vào phòng này.
+                    When enabled, new participants cannot join this room.
                   </p>
                 </div>
                 <Switch
@@ -1005,14 +1011,14 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                 onClick={() => setIsSettingsOpen(false)}
                 className="border-zinc-700 text-zinc-300"
               >
-                Hủy
+                Cancel
               </Button>
               <Button
                 size="sm"
                 onClick={handleSaveRoomSettings}
                 className="bg-purple-600 hover:bg-purple-500 text-white"
               >
-                Lưu Thay Đổi
+                Save Changes
               </Button>
             </DialogFooter>
           </DialogContent>

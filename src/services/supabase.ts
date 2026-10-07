@@ -115,7 +115,7 @@ export async function testSupabaseConnection(
     if (!url || !key) {
       return {
         success: false,
-        message: 'Vui lòng nhập đầy đủ Supabase Project URL và Anon Public Key.',
+        message: 'Please enter both Supabase Project URL and Anon Public Key.',
         tableProfilesExists: false,
       };
     }
@@ -123,7 +123,7 @@ export async function testSupabaseConnection(
     if (!url.startsWith('https://') && !url.startsWith('http://')) {
       return {
         success: false,
-        message: 'URL không hợp lệ. URL phải bắt đầu bằng https:// (ví dụ https://xxxx.supabase.co)',
+        message: 'Invalid URL. URL must start with https:// (e.g. https://xxxx.supabase.co)',
         tableProfilesExists: false,
       };
     }
@@ -137,7 +137,7 @@ export async function testSupabaseConnection(
     if (authErr) {
       return {
         success: false,
-        message: `Lỗi kết nối Auth: ${authErr.message}`,
+        message: `Auth connection error: ${authErr.message}`,
         tableProfilesExists: false,
       };
     }
@@ -157,22 +157,22 @@ export async function testSupabaseConnection(
       return {
         success: true,
         message: isMissingTable
-          ? 'Kết nối Supabase thành công! Tuy nhiên bảng "profiles" chưa được tạo. Hãy chạy file supabase_schema.sql trong SQL Editor.'
-          : `Kết nối thành công nhưng có cảnh báo truy vấn: ${tableErr.message}`,
+          ? 'Connected to Supabase successfully! However, the "profiles" table has not been created yet. Please execute supabase_schema.sql in your SQL Editor.'
+          : `Connected successfully with warning: ${tableErr.message}`,
         tableProfilesExists: !isMissingTable,
       };
     }
 
     return {
       success: true,
-      message: 'Kết nối Supabase hoàn hảo! Đã tìm thấy bảng profiles và hệ thống sẵn sàng hoạt động.',
+      message: 'Supabase connection verified! Found "profiles" table and system is ready.',
       tableProfilesExists: true,
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return {
       success: false,
-      message: `Không thể kết nối tới Supabase: ${msg}`,
+      message: `Failed to connect to Supabase: ${msg}`,
       tableProfilesExists: false,
     };
   }
