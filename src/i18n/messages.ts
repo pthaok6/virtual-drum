@@ -409,5 +409,17 @@ export const vietnamese: Record<string, string> = {
   "Classical": "Cổ điển",
   "Electronic": "Điện tử",
   "A real recording with an illustrative drum chart for the frontend preview.": "Bản nhạc thật với bản đồ nốt minh họa để xem trước giao diện.",
-  "An illustrative drum chart for your audio. Automatic analysis is not connected yet.": "Bản đồ nốt minh họa cho nhạc của bạn. Chưa kết nối phân tích nhạc tự động."
+  "An illustrative drum chart for your audio. Automatic analysis is not connected yet.": "Bản đồ nốt minh họa cho nhạc của bạn. Chưa kết nối phân tích nhạc tự động.",
+  "Share to social media": "Chia sẻ lên mạng xã hội",
+  "Caption and link": "Nội dung và liên kết",
+  "Copy caption": "Sao chép nội dung",
+  "I scored {score} points with {accuracy}% accuracy in Virtual Drum!": "Mình đạt {score} điểm với độ chính xác {accuracy}% trong Virtual Drum!",
+  "Choose a platform": "Chọn nền tảng",
+  "Preview only": "Chỉ xem trước",
+  "Post preview for {platform}": "Xem trước bài đăng trên {platform}",
+  "Image and caption for a post or Story.": "Ảnh và nội dung cho bài đăng hoặc Story.",
+  "Result image, caption, and post link.": "Ảnh kết quả, nội dung và liên kết bài đăng.",
+  "Share to {platform}": "Chia sẻ lên {platform}",
+  "Preview your performance on Facebook, Instagram, X, or another app.": "Xem trước bài chơi trên Facebook, Instagram, X hoặc ứng dụng khác.",
+  "This is a sharing preview. Nothing is posted to social media.": "Đây là giao diện xem trước chia sẻ. Chưa đăng nội dung lên mạng xã hội."
 };

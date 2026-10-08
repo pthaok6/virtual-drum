@@ -16,7 +16,7 @@ Toàn bộ nhận diện bàn tay và xử lý âm thanh được thực hiện 
 - Luồng thêm nhạc: chọn file → đọc thời lượng → mô phỏng phân tích → xem trước nốt theo độ khó → lưu vào thư viện. BPM và các đoạn trong kết quả mô phỏng là dữ liệu mẫu, không phải kết quả nhận diện âm thanh. File nhạc lưu cục bộ bằng IndexedDB, tối đa 50 MB / 10 phút.
 - Bài nhạc có giai điệu, hợp âm, bass và nhịp trống hướng dẫn; chấm Perfect/Good/Miss theo thời gian phát thực tế, có tạm dừng và tiếp tục.
 - Bình luận trên bài chia sẻ ở profile và trang riêng `/posts/:clipId`.
-- Chia sẻ ảnh PNG kèm link bài đăng; hỗ trợ tải ảnh và sao chép link khi Web Share API không khả dụng.
+- Giao diện chia sẻ lên Facebook, Instagram và X/Twitter: chọn nền tảng, xem ảnh kết quả, nội dung và link bài đăng. Các nút chia sẻ/tải ảnh/sao chép hiện mô phỏng tương tác, chưa mở nền tảng hoặc đăng nội dung thật.
 - Tìm người chơi theo tên hoặc handle tại `/users`, mở profile, theo dõi và bắt đầu cuộc trò chuyện.
 - Giao diện chat tại `/messages` và `/messages/:userId`, lịch sử và trạng thái đã đọc được lưu trong trình duyệt.
 - Tiếng Anh mặc định; tùy chọn tiếng Việt trong Settings → Language.
