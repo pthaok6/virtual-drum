@@ -1,232 +1,38 @@
-import React, { useState, useRef } from 'react';
-import { RhythmChallenge, ScreenType } from '../types';
-import { CHALLENGES } from '../data/challenges';
-import { audioEngine } from '../services/audio';
-import { ArrowLeft, Play, Square, Award, Music, Flame, Sparkles } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Disc3, Search } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageProvider';
+import { useChallenges } from '../data/ChallengeLibrary';
+import { AddSongForm } from '../components/AddSongForm';
+import { SongCover } from '../components/SongPresentation';
+import { formatSongTime } from '../services/songExperience';
+import type { SavedSong } from '../services/songLibrary';
+import type { RhythmChallenge, ScreenType } from '../types';
 
-interface ChallengeSelectScreenProps {
-  onNavigate: (screen: ScreenType) => void;
-  onSelectChallenge: (challenge: RhythmChallenge) => void;
+export function ChallengeSelectScreen({ onNavigate, onSelectChallenge, onAddSong, onViewSong, storageMessage }: {
+  onNavigate: (screen: ScreenType) => void; onSelectChallenge: (challenge: RhythmChallenge) => void;
+  onAddSong: (song: SavedSong) => Promise<RhythmChallenge>; onViewSong: (id: string) => void; storageMessage?: string;
+}) {
+  const { t } = useLanguage();
+  const challenges = useChallenges();
+  const [tab, setTab] = useState('songs');
+  const [query, setQuery] = useState('');
+  const [genre, setGenre] = useState('All genres');
+  const songs = challenges.filter(challenge => challenge.music);
+  const genres = ['All genres', ...new Set(songs.map(song => song.song?.genre ?? 'Other'))];
+  const filtered = challenges.filter(challenge => (tab === 'practice' ? !challenge.music : tab === 'mine' ? challenge.song?.source === 'upload' : challenge.music && challenge.song?.source !== 'upload')
+    && (genre === 'All genres' || challenge.song?.genre === genre)
+    && (challenge.title + ' ' + challenge.artist).toLowerCase().includes(query.trim().toLowerCase())).sort((a, b) => Number(b.song?.source === 'recording') - Number(a.song?.source === 'recording'));
+  return <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <button onClick={() => onNavigate('home')} className="mb-6 inline-flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-white"><ArrowLeft className="h-4 w-4" />{t('Back to Home')}</button>
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-rose-400">{t('Rhythm Challenge')}</p><h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">{t('Song library')}</h1><p className="mt-2 max-w-xl text-sm text-zinc-400">{t('Find your groove. Choose a song, pick a difficulty, and feel every beat.')}</p></div><div className="flex items-center gap-2 text-xs text-zinc-500"><Disc3 className="h-4 w-4 text-rose-400" />{songs.length} {t('songs to explore')}</div></div>
+    <AddSongForm onAddSong={async song => { const challenge = await onAddSong(song); onViewSong(challenge.id); return challenge; }} />
+    {storageMessage && <p role="status" className="mb-4 text-sm text-amber-300">{t(storageMessage)}</p>}
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div className="flex gap-1 rounded-xl border border-zinc-800 bg-zinc-900 p-1" role="tablist" aria-label={t('Song collections')}>{[{ id: 'songs', title: 'Discover' }, { id: 'mine', title: 'My songs' }, { id: 'practice', title: 'Drum practice' }].map(item => <button key={item.id} role="tab" aria-selected={tab === item.id} onClick={() => { setTab(item.id); setGenre('All genres'); }} className={'rounded-lg px-4 py-2 text-xs font-bold ' + (tab === item.id ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-200')}>{t(item.title)}</button>)}</div><div className="flex w-full gap-2 sm:w-auto"><div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" /><input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('Search songs')} placeholder={t('Search songs or artists')} className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-rose-400" /></div>{tab !== 'practice' && <select value={genre} onChange={event => setGenre(event.target.value)} aria-label={t('Genre')} className="max-w-36 rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-xs text-zinc-300">{genres.map(item => <option key={item} value={item}>{t(item)}</option>)}</select>}</div></div>
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(challenge => <article key={challenge.id} className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 transition-colors hover:border-zinc-600">
+      {challenge.music && <Link to={'/songs/' + encodeURIComponent(challenge.id)} aria-label={t('View song {title}', { title: challenge.title })}><SongCover challenge={challenge} className="h-44" /></Link>}
+      <div className="p-5"><div className="mb-3 flex flex-wrap gap-2"><span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-bold text-zinc-400">{t(challenge.song?.source === 'recording' ? 'Recording' : challenge.song?.source === 'upload' ? 'Your music' : challenge.music ? 'Original sample' : 'Guided')}</span>{challenge.song?.chartSource === 'demo' && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">{t('Demo chart')}</span>}</div><h2 className="text-lg font-bold text-white">{challenge.music ? <Link to={'/songs/' + encodeURIComponent(challenge.id)} className="hover:text-rose-300">{challenge.title}</Link> : t(challenge.title)}</h2><p className="mt-1 text-xs text-zinc-500">{t(challenge.artist)}</p><div className="mt-4 flex items-center gap-3 font-mono text-xs text-zinc-400"><span>{formatSongTime(challenge.durationSeconds)}</span><span>·</span><span>{challenge.bpm} BPM</span></div><div className="mt-5">{challenge.music ? <Link to={'/songs/' + encodeURIComponent(challenge.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-500">{t('Choose difficulty')}<ArrowRight className="h-4 w-4" /></Link> : <button onClick={() => { onSelectChallenge(challenge); onNavigate('rhythm-game'); }} className="w-full rounded-xl bg-zinc-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-500">{t('Play Challenge')}</button>}</div></div>
+    </article>)}</div>
+    {filtered.length === 0 && <div className="rounded-2xl border border-dashed border-zinc-700 p-12 text-center"><Disc3 className="mx-auto mb-3 h-8 w-8 text-zinc-600" /><h2 className="font-bold text-zinc-300">{t(tab === 'mine' && !query ? 'Your song library starts here' : 'No songs found')}</h2><p className="mt-2 text-sm text-zinc-500">{t(tab === 'mine' && !query ? 'Add an audio file above to preview your first challenge.' : 'Try another song, artist, or genre.')}</p></div>}
+  </div>;
 }
-
-export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
-  onNavigate,
-  onSelectChallenge,
-}) => {
-  const [selectedId, setSelectedId] = useState<string>(CHALLENGES[0].id);
-  const [previewingId, setPreviewingId] = useState<string | null>(null);
-  const previewTimerRef = useRef<NodeJS.Timeout[]>([]);
-
-  const stopPreview = () => {
-    previewTimerRef.current.forEach(clearTimeout);
-    previewTimerRef.current = [];
-    setPreviewingId(null);
-  };
-
-  const handleTogglePreview = (challenge: RhythmChallenge, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (previewingId === challenge.id) {
-      stopPreview();
-      return;
-    }
-
-    stopPreview();
-    setPreviewingId(challenge.id);
-
-    // Play first 12 notes of the rhythm challenge as an acoustic preview
-    const sampleNotes = challenge.notes.slice(0, 10);
-    const startOffset = sampleNotes[0]?.timeMs || 0;
-
-    sampleNotes.forEach((note) => {
-      const delay = Math.max(0, note.timeMs - startOffset);
-      const timer = setTimeout(() => {
-        audioEngine.playDrum(note.drum);
-      }, delay);
-      previewTimerRef.current.push(timer);
-    });
-
-    // Auto-stop preview after the sample finishes
-    const totalSampleDuration = (sampleNotes[sampleNotes.length - 1]?.timeMs - startOffset || 2000) + 400;
-    const endTimer = setTimeout(() => {
-      setPreviewingId(null);
-    }, totalSampleDuration);
-    previewTimerRef.current.push(endTimer);
-  };
-
-  const selectedChallenge = CHALLENGES.find((c) => c.id === selectedId) || CHALLENGES[0];
-
-  const handleStartGame = (challenge: RhythmChallenge) => {
-    stopPreview();
-    onSelectChallenge(challenge);
-    onNavigate('rhythm-game');
-  };
-
-  const getDifficultyBadge = (difficulty: 'Easy' | 'Medium' | 'Hard') => {
-    switch (difficulty) {
-      case 'Easy':
-        return (
-          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/15 px-2.5 text-xs font-semibold text-emerald-400">
-            Easy
-          </Badge>
-        );
-      case 'Medium':
-        return (
-          <Badge variant="outline" className="border-amber-500/30 bg-amber-500/15 px-2.5 text-xs font-semibold text-amber-400">
-            Medium
-          </Badge>
-        );
-      case 'Hard':
-        return (
-          <Badge variant="outline" className="border-rose-500/30 bg-rose-500/15 px-2.5 text-xs font-semibold text-rose-400">
-            Hard
-          </Badge>
-        );
-    }
-  };
-
-  return (
-    <div className="flex flex-col min-h-[calc(100vh-4rem)] max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 w-full">
-      {/* Header with Back button */}
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-zinc-800">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            stopPreview();
-            onNavigate('home');
-          }}
-          className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to Home</span>
-        </Button>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Rhythm Challenge Selection
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-400">
-            Select a rhythm track to test your reaction speed, timing accuracy, and hand coordination.
-          </p>
-        </div>
-      </div>
-
-      {/* Challenge Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8">
-        {CHALLENGES.map((challenge) => {
-          const isSelected = selectedId === challenge.id;
-          const isPreviewing = previewingId === challenge.id;
-
-          return (
-            <Card
-              key={challenge.id}
-              onClick={() => setSelectedId(challenge.id)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  setSelectedId(challenge.id);
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              className={`group relative cursor-pointer gap-0 rounded-2xl border py-0 text-zinc-100 transition-all duration-150 ${
-                isSelected
-                  ? 'border-amber-500/60 bg-gradient-to-b from-amber-950/20 via-zinc-900 to-zinc-950 shadow-xl shadow-amber-950/20 scale-[1.01]'
-                  : 'border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70'
-              }`}
-            >
-              {/* Selected indicator check */}
-              {isSelected && (
-                <Badge variant="outline" className="absolute right-4 top-4 border-amber-500/20 bg-amber-500/10 text-[11px] font-bold text-amber-400">
-                  <Sparkles className="h-3 w-3" />
-                  <span>Selected</span>
-                </Badge>
-              )}
-
-              <CardContent className="p-5 pb-4 sm:p-6 sm:pb-4">
-                {/* Header row: Difficulty & BPM */}
-                <div className="flex items-center gap-2 mb-3">
-                  {getDifficultyBadge(challenge.difficulty)}
-                  <Badge variant="secondary" className="rounded bg-zinc-800 px-2 font-mono text-xs text-zinc-300">
-                    {challenge.bpm} BPM
-                  </Badge>
-                  <span className="text-xs text-zinc-400">
-                    {challenge.notes.length} guided hits
-                  </span>
-                </div>
-
-                {/* Song Title & Artist */}
-                <h2 className="text-lg sm:text-xl font-bold text-white group-hover:text-amber-300 transition-colors">
-                  {challenge.title}
-                </h2>
-                <p className="text-xs text-zinc-400 font-medium mb-3">
-                  {challenge.artist}
-                </p>
-
-                {/* Description */}
-                <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4">
-                  {challenge.description}
-                </p>
-              </CardContent>
-
-              {/* Action row: Audio sample preview & Select button */}
-              <CardFooter className="flex items-center justify-between gap-3 border-t border-zinc-800/80 bg-transparent p-5 pt-4 sm:p-6 sm:pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => handleTogglePreview(challenge, e)}
-                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold border transition-colors ${
-                    isPreviewing
-                      ? 'border-rose-500/40 bg-rose-500/20 text-rose-300 animate-pulse'
-                      : 'border-zinc-700 bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 hover:text-white'
-                  }`}
-                >
-                  {isPreviewing ? <Square className="h-3.5 w-3.5 fill-current" /> : <Music className="h-3.5 w-3.5" />}
-                  <span>{isPreviewing ? 'Stop Sample' : 'Sample Beat'}</span>
-                </Button>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => handleStartGame(challenge)}
-                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-4 py-1.5 text-xs font-bold text-zinc-950 shadow-md shadow-amber-500/20 hover:scale-105 active:scale-95 transition-all"
-                >
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                  <span>Play Challenge</span>
-                </Button>
-              </CardFooter>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Primary Play Banner */}
-      <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/60 py-0 text-zinc-100 backdrop-blur-md">
-        <CardContent className="flex flex-col items-center justify-between gap-4 p-4 sm:flex-row sm:p-5">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
-            Ready to perform
-          </span>
-          <h2 className="text-base font-bold text-white">
-            Ready to play: <span className="text-amber-300">{selectedChallenge.title}</span> ({selectedChallenge.bpm} BPM)
-          </h2>
-        </div>
-
-        <Button
-          id="challenge-start-btn"
-          size="lg"
-          onClick={() => handleStartGame(selectedChallenge)}
-          className="flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-3 text-sm font-bold text-zinc-950 shadow-lg shadow-amber-500/25 hover:scale-105 active:scale-95 transition-all"
-        >
-          <Play className="h-4 w-4 fill-current" />
-          <span>Launch Rhythm Challenge</span>
-        </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};

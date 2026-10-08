@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/LanguageProvider';
 import React, { useState, useEffect, useRef } from 'react';
 import { DrumType, ScreenType, AppSettings, HitRating } from '../types';
 import { DRUMS } from '../data/drums';
@@ -36,6 +37,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
   onUpdateSettings,
   onOpenSettings,
 }) => {
+  const { t } = useLanguage();
   const [trackingState, setTrackingState] = useState<TrackingState>({
     isStreaming: false,
     isInitializing: false,
@@ -161,14 +163,12 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
             className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Exit to Home</span>
+            <span>{t("Exit to Home")}</span>
           </Button>
 
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
-            <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-              Free Play
-            </h1>
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-tight"> {t("Free Play")} </h1>
           </div>
         </div>
 
@@ -179,11 +179,9 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
             <CardContent className="flex items-center gap-2 px-3 py-1">
               <Flame className={`h-4 w-4 ${combo > 0 ? 'animate-bounce' : ''}`} />
               <div className="flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500/80 -mb-1">
-                Combo
-              </span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500/80 -mb-1"> {t("Combo")} </span>
               <span className="text-sm font-black font-mono">
-                {combo} <span className="text-[10px] text-zinc-400 font-normal">/ max {maxCombo}</span>
+                {combo} <span className="text-[10px] text-zinc-400 font-normal">{t("/ max")} {maxCombo}</span>
               </span>
               </div>
             </CardContent>
@@ -194,14 +192,12 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
             <CardContent className="flex items-center gap-2 px-3 py-1">
               <Zap className="h-4 w-4 text-zinc-400" />
               <div className="flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 -mb-1">
-                Last Hit
-              </span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 -mb-1"> {t("Last Hit")} </span>
               <span
                 className="text-xs font-bold uppercase"
                 style={{ color: lastDrumObj ? lastDrumObj.color : '#a1a1aa' }}
               >
-                {lastDrumObj ? lastDrumObj.name : 'None'}
+                {lastDrumObj ? t(lastDrumObj.name) : t("None")}
               </span>
               </div>
             </CardContent>
@@ -215,7 +211,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
               size="icon-xs"
               onClick={() => onUpdateSettings({ volume: settings.volume === 0 ? 0.85 : 0 })}
               className="text-zinc-400 hover:bg-zinc-800 hover:text-white"
-              aria-label={settings.volume === 0 ? 'Unmute' : 'Mute'}
+              aria-label={settings.volume === 0 ? t("Unmute") : t("Mute")}
             >
               {settings.volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </Button>
@@ -226,7 +222,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
               value={[settings.volume]}
               onValueChange={(value) => onUpdateSettings({ volume: Array.isArray(value) ? value[0] : value })}
               className="w-16 cursor-pointer sm:w-20 [&_[data-slot=slider-range]]:bg-rose-500 [&_[data-slot=slider-track]]:bg-zinc-800"
-              aria-label="Master volume"
+              aria-label={t("Master volume")}
             />
           </div>
 
@@ -237,7 +233,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
             size="icon"
             onClick={onOpenSettings}
             className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-            title="Settings"
+            title={t("Settings")}
           >
             <Sliders className="h-3.5 w-3.5" />
           </Button>
@@ -251,13 +247,9 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <Camera className="h-4 w-4 text-rose-400" />
-              <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
-                Webcam Tracking Mirror
-              </span>
+              <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider"> {t("Webcam Tracking Mirror")} </span>
             </div>
-            <span className="text-[11px] text-zinc-400">
-              Move your index finger onto a drum or tap it directly!
-            </span>
+            <span className="text-[11px] text-zinc-400"> {t("Move your index finger onto a drum or tap it directly!")} </span>
           </div>
 
           <CameraView
@@ -277,10 +269,8 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
           {/* Tips Bar */}
           <Alert className="flex flex-wrap items-center justify-between gap-2 border-zinc-800/80 bg-zinc-900/50 p-3 text-xs text-zinc-400">
             <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-            <AlertDescription className="col-start-2 text-xs text-zinc-400">
-              Tip: Keep your index fingertips visible, then move one onto a drum to play it.
-            </AlertDescription>
-            <span className="ml-auto font-mono text-[11px] text-zinc-500">Total Hits: {totalHits}</span>
+            <AlertDescription className="col-start-2 text-xs text-zinc-400"> {t("Tip: Keep your index fingertips visible, then move one onto a drum to play it.")} </AlertDescription>
+            <span className="ml-auto font-mono text-[11px] text-zinc-500">{t("Total Hits:")} {totalHits}</span>
           </Alert>
         </div>
 
@@ -289,14 +279,10 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
           <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/60 py-0 text-zinc-100 shadow-xl backdrop-blur-md">
             <CardHeader className="mb-4 flex-row items-center justify-between border-b border-zinc-800 p-5 pb-3">
               <div>
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Drum Console
-                </h2>
-                <p className="text-[11px] text-zinc-400">Tactile drum pads with real-time feedback</p>
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider"> {t("Drum Console")} </h2>
+                <p className="text-[11px] text-zinc-400">{t("Tactile drum pads with real-time feedback")}</p>
               </div>
-              <Badge variant="secondary" className="rounded-md bg-zinc-800 px-2 font-mono text-[10px] text-zinc-300">
-                5 DRUMS
-              </Badge>
+              <Badge variant="secondary" className="rounded-md bg-zinc-800 px-2 font-mono text-[10px] text-zinc-300"> {t("5 DRUMS")} </Badge>
             </CardHeader>
 
             {/* Drum Pads Grid */}
@@ -360,9 +346,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
             {/* Quick Keyboard Reference */}
             <Separator className="mt-5 bg-zinc-800/80" />
             <CardContent className="px-5 pb-5 pt-3">
-              <span className="text-[11px] font-bold text-zinc-400 block mb-2">
-                Physical Keyboard Shortcuts
-              </span>
+              <span className="text-[11px] font-bold text-zinc-400 block mb-2"> {t("Physical Keyboard Shortcuts")} </span>
               <div className="grid grid-cols-5 gap-1.5 text-center">
                 {DRUMS.map((d) => (
                   <Button
@@ -376,7 +360,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
                       {d.key}
                     </span>
                     <span className="text-[9px] text-zinc-400 truncate w-full">
-                      {d.name}
+                      {t(d.name)}
                     </span>
                   </Button>
                 ))}

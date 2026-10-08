@@ -1,7 +1,8 @@
+import { useLanguage } from '@/i18n/LanguageProvider';
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ScreenType } from '../types';
-import { Volume2, VolumeX, Settings, Camera, Music, Bell, UserRound, LogIn } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Camera, Music, Bell, UserRound, LogIn, MessageCircle, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -13,6 +14,7 @@ interface NavbarProps {
   volume: number;
   onVolumeChange: (vol: number) => void;
   isCameraActive: boolean;
+  unreadMessages?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,7 +24,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   volume,
   onVolumeChange,
   isCameraActive,
+  unreadMessages = 0,
 }) => {
+  const { t } = useLanguage();
   const location = useLocation();
   return (
     <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
@@ -47,9 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 PRO
               </Badge>
             </div>
-            <p className="text-[11px] text-zinc-400 -mt-0.5 hidden sm:block">
-              Webcam Gesture Drum Machine
-            </p>
+            <p className="text-[11px] text-zinc-400 -mt-0.5 hidden sm:block"> {t("Webcam Gesture Drum Machine")} </p>
           </div>
         </Button>
 
@@ -65,9 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-zinc-800 text-white'
                 : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
             }`}
-          >
-            Home
-          </Button>
+          > {t("Home")} </Button>
           <Button
             id="nav-link-free-play"
             variant="ghost"
@@ -78,9 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                 : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
             }`}
-          >
-            Free Play
-          </Button>
+          > {t("Free Play")} </Button>
           <Button
             id="nav-link-challenge"
             variant="ghost"
@@ -91,18 +89,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                 : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
             }`}
-          >
-            Rhythm Challenge
-          </Button>
-          <Link to="/#leaderboard" className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900 hover:text-white sm:text-sm">Leaderboard</Link>
-          <Link to="/rooms" className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium sm:text-sm ${location.pathname.startsWith('/rooms') ? 'bg-rose-500/20 text-rose-300' : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'}`}>Rooms</Link>
+          > {t("Rhythm Challenge")} </Button>
+          <Link to="/#leaderboard" className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900 hover:text-white sm:text-sm">{t("Leaderboard")}</Link>
+          <Link to="/rooms" className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium sm:text-sm ${location.pathname.startsWith('/rooms') ? 'bg-rose-500/20 text-rose-300' : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'}`}>{t("Rooms")}</Link>
         </nav>
 
         {/* Right Tools */}
         <div className="flex items-center gap-2 sm:gap-4">
-          <Link to="/notifications" aria-label="Thông báo" title="Thông báo" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><Bell className="h-4 w-4" /></Link>
-          <Link to="/profile/you" aria-label="Profile" title="Profile" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><UserRound className="h-4 w-4" /></Link>
-          <Link to="/login" aria-label="Đăng nhập" title="Đăng nhập" className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><LogIn className="h-4 w-4" /></Link>
+          <Link to="/users" aria-label={t('Search users')} title={t('Search users')} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><Search className="h-4 w-4" /></Link>
+          <Link to="/messages" aria-label={t('Messages')} title={t('Messages')} className="relative rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><MessageCircle className="h-4 w-4" />{unreadMessages > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">{unreadMessages}</span>}</Link>
+          <Link to="/notifications" aria-label={t("Notifications")} title={t("Notifications")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><Bell className="h-4 w-4" /></Link>
+          <Link to="/profile/you" aria-label={t("Profile")} title={t("Profile")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><UserRound className="h-4 w-4" /></Link>
+          <Link to="/login" aria-label={t("Log in")} title={t("Log in")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><LogIn className="h-4 w-4" /></Link>
           {/* Camera Status Badge */}
           <Badge
             id="nav-camera-badge"
@@ -115,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <span className={`h-2 w-2 rounded-full ${isCameraActive ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
             <Camera className="h-3.5 w-3.5" />
-            <span>{isCameraActive ? 'Cam Active' : 'Cam Idle'}</span>
+            <span>{isCameraActive ? t("Cam Active") : t("Cam Idle")}</span>
           </Badge>
 
           {/* Quick Volume Slider */}
@@ -126,7 +124,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               size="icon-xs"
               onClick={() => onVolumeChange(volume === 0 ? 0.8 : 0)}
               className="text-zinc-400 hover:bg-zinc-800 hover:text-white"
-              title={volume === 0 ? 'Unmute' : 'Mute'}
+              title={volume === 0 ? t("Unmute") : t("Mute")}
             >
               {volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </Button>
@@ -137,7 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               value={[volume]}
               onValueChange={(value) => onVolumeChange(Array.isArray(value) ? value[0] : value)}
               className="w-16 cursor-pointer [&_[data-slot=slider-range]]:bg-rose-500 [&_[data-slot=slider-track]]:bg-zinc-800"
-              aria-label="Master volume"
+              aria-label={t("Master volume")}
             />
           </div>
 
@@ -149,7 +147,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             size="icon-lg"
             onClick={onOpenSettings}
             className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/80 text-zinc-400 transition-colors hover:border-zinc-700 hover:bg-zinc-800 hover:text-white"
-            title="Open Settings"
+            title={t("Open Settings")}
           >
             <Settings className="h-4 w-4" />
           </Button>

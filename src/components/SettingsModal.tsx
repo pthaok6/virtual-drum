@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/LanguageProvider';
 import React, { useEffect, useState } from 'react';
 import { AppSettings } from '../types';
 import { cameraTracker } from '../services/cameraTracker';
@@ -30,6 +31,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
 }) => {
+  const { t } = useLanguage();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         id="settings-modal-panel"
-        className="max-w-md gap-0 border-zinc-800 bg-zinc-950 p-0 text-zinc-100 shadow-2xl shadow-rose-950/20 sm:max-w-md"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto max-w-md gap-0 border-zinc-800 bg-zinc-950 p-0 text-zinc-100 shadow-2xl shadow-rose-950/20 sm:max-w-md"
       >
         {/* Header */}
         <DialogHeader className="flex-row items-center gap-2.5 border-b border-zinc-800 p-6 pb-4 text-left">
@@ -51,21 +53,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
           <div className="flex items-center gap-2.5">
             <div>
-              <DialogTitle className="text-base font-bold text-white">Audio & Camera Settings</DialogTitle>
-              <DialogDescription className="mt-1 text-xs text-zinc-400">
-                Configure gameplay and tracking preferences
-              </DialogDescription>
+              <DialogTitle className="text-base font-bold text-white">{t("Settings")}</DialogTitle>
+              <DialogDescription className="mt-1 text-xs text-zinc-400"> {t("Configure gameplay and tracking preferences")} </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         {/* Content Settings Form */}
         <div className="space-y-5 p-6">
+          <div>
+            <Label htmlFor="settings-language" className="mb-1.5 block text-xs font-semibold text-zinc-200">{t('Language')}</Label>
+            <Select value={settings.language} onValueChange={(value) => { if (value === 'en' || value === 'vi') onUpdateSettings({ language: value }); }}>
+              <SelectTrigger id="settings-language" className="w-full border-zinc-800 bg-zinc-900 text-xs text-zinc-200">
+                <SelectValue>{settings.language === 'vi' ? 'Tiếng Việt' : 'English'}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-200">
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="vi">Tiếng Việt</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-zinc-500">{t('Choose your interface language')}</p>
+          </div>
           {/* Camera On / Off Toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="settings-camera" className="text-xs font-semibold text-zinc-200">MediaPipe Hand Tracking</Label>
-              <p className="text-[11px] text-zinc-500">Move an index fingertip onto a visible drum</p>
+              <Label htmlFor="settings-camera" className="text-xs font-semibold text-zinc-200">{t("MediaPipe Hand Tracking")}</Label>
+              <p className="text-[11px] text-zinc-500">{t("Move an index fingertip onto a visible drum")}</p>
             </div>
             <Switch
               id="settings-camera"
@@ -78,21 +91,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Camera Device Dropdown */}
           {devices.length > 0 && (
             <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-zinc-200">
-                Camera Device
-              </Label>
+              <Label className="mb-1.5 block text-xs font-semibold text-zinc-200"> {t("Camera Device")} </Label>
               <Select
                 value={settings.selectedCameraId || 'default'}
                 onValueChange={(value) => onUpdateSettings({ selectedCameraId: value === 'default' ? '' : value ?? '' })}
               >
                 <SelectTrigger className="w-full border-zinc-800 bg-zinc-900 text-xs text-zinc-200">
-                  <SelectValue placeholder="Default Front / User Camera" />
+                  <SelectValue placeholder={t("Default Front / User Camera")} />
                 </SelectTrigger>
                 <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-200">
-                  <SelectItem value="default">Default Front / User Camera</SelectItem>
+                  <SelectItem value="default">{t("Default Front / User Camera")}</SelectItem>
                   {devices.map((d, i) => (
                     <SelectItem key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Camera ${i + 1}`}
+                      {d.label || t('Camera {number}', { number: i + 1 })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -103,7 +114,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Master Volume Slider */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <Label className="text-xs font-semibold text-zinc-200">Master Volume</Label>
+              <Label className="text-xs font-semibold text-zinc-200">{t("Master Volume")}</Label>
               <span className="text-xs font-mono font-bold text-amber-400">
                 {Math.round(settings.volume * 100)}%
               </span>
@@ -115,15 +126,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               value={[settings.volume]}
               onValueChange={(value) => onUpdateSettings({ volume: Array.isArray(value) ? value[0] : value })}
               className="w-full cursor-pointer [&_[data-slot=slider-range]]:bg-amber-500 [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:bg-zinc-800"
-              aria-label="Master volume"
+              aria-label={t("Master volume")}
             />
           </div>
 
           {/* Sound Effects Toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="settings-sfx" className="text-xs font-semibold text-zinc-200">Sound Effects & SFX</Label>
-              <p className="text-[11px] text-zinc-500">Play drum sounds and hit rating chimes</p>
+              <Label htmlFor="settings-sfx" className="text-xs font-semibold text-zinc-200">{t("Sound Effects & SFX")}</Label>
+              <p className="text-[11px] text-zinc-500">{t("Play drum sounds and hit rating chimes")}</p>
             </div>
             <Switch
               id="settings-sfx"
@@ -136,8 +147,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Visual Effects & Glow Toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="settings-effects" className="text-xs font-semibold text-zinc-200">Visual Effects & Glow</Label>
-              <p className="text-[11px] text-zinc-500">Display hit ripple waves and particle animations</p>
+              <Label htmlFor="settings-effects" className="text-xs font-semibold text-zinc-200">{t("Visual Effects & Glow")}</Label>
+              <p className="text-[11px] text-zinc-500">{t("Display hit ripple waves and particle animations")}</p>
             </div>
             <Switch
               id="settings-effects"
@@ -150,8 +161,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Mirror Camera Toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <Label htmlFor="settings-mirror" className="text-xs font-semibold text-zinc-200">Mirror Video Feed</Label>
-              <p className="text-[11px] text-zinc-500">Flip camera horizontally for natural mirror feel</p>
+              <Label htmlFor="settings-mirror" className="text-xs font-semibold text-zinc-200">{t("Mirror Video Feed")}</Label>
+              <p className="text-[11px] text-zinc-500">{t("Flip camera horizontally for natural mirror feel")}</p>
             </div>
             <Switch
               id="settings-mirror"
@@ -170,9 +181,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             variant="secondary"
             className="flex items-center gap-1.5 rounded-xl bg-zinc-800 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-700 transition-colors"
           >
-            <Check className="h-3.5 w-3.5" />
-            Done
-          </Button>
+            <Check className="h-3.5 w-3.5" /> {t("Done")} </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

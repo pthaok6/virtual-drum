@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/LanguageProvider';
 import React, { useEffect, useRef } from 'react';
 import { DRUMS } from '../data/drums';
 import { DrumType, HitRating } from '../types';
@@ -36,6 +37,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
   mirror = true,
   showHandIndicators = true,
 }) => {
+  const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -77,7 +79,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
                 type="button"
                 variant="ghost"
                 onClick={() => onDrumClick?.(drum.id)}
-                title={drum.name}
+                title={t(drum.name)}
                 style={{
                   left: `${drum.visualZone.x}%`,
                   top: `${drum.visualZone.y}%`,
@@ -107,9 +109,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
                   <div
                     className="absolute -top-3 z-30 whitespace-nowrap rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-zinc-950 shadow-lg"
                     style={{ backgroundColor: drum.color }}
-                  >
-                    Play this
-                  </div>
+                  > {t("Play this")} </div>
                 )}
 
                 {/* Hit badge popup */}
@@ -118,7 +118,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
                     className="absolute -top-3 z-30 font-black text-[11px] sm:text-xs uppercase px-2 py-0.5 rounded-full text-zinc-950 shadow-lg animate-bounce"
                     style={{ backgroundColor: drum.color }}
                   >
-                    {hitState?.rating ? hitState.rating.toUpperCase() : 'HIT!'}
+                    {hitState?.rating ? t(hitState.rating[0].toUpperCase() + hitState.rating.slice(1)).toUpperCase() : t("HIT!")}
                   </div>
                 )}
 
@@ -127,10 +127,9 @@ export const CameraView: React.FC<CameraViewProps> = ({
                     className="font-black text-xs sm:text-sm tracking-wide uppercase drop-shadow"
                     style={{ color: isHit ? '#ffffff' : drum.color }}
                   >
-                    {drum.name}
+                    {t(drum.name)}
                   </span>
-                  <span className="text-[9px] sm:text-[10px] text-zinc-300/80 font-medium hidden sm:block">
-                    Key [{drum.key}]
+                  <span className="text-[9px] sm:text-[10px] text-zinc-300/80 font-medium hidden sm:block"> {t("Key [")}{drum.key}]
                   </span>
                 </div>
 
@@ -164,9 +163,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
                     <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 border-cyan-400 bg-cyan-400/20 shadow-[0_0_20px_rgba(6,182,212,0.6)]" />
                     <div className="absolute h-2 w-2 rounded-full bg-cyan-300" />
                   </div>
-                  <span className="text-[9px] font-bold text-cyan-300 bg-zinc-950/80 px-1.5 py-0.5 rounded mt-1 border border-cyan-500/30">
-                    Index
-                  </span>
+                  <span className="text-[9px] font-bold text-cyan-300 bg-zinc-950/80 px-1.5 py-0.5 rounded mt-1 border border-cyan-500/30"> {t("Index")} </span>
                 </div>
               )}
 
@@ -183,9 +180,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
                     <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 border-rose-400 bg-rose-400/20 shadow-[0_0_20px_rgba(244,63,94,0.6)]" />
                     <div className="absolute h-2 w-2 rounded-full bg-rose-300" />
                   </div>
-                  <span className="text-[9px] font-bold text-rose-300 bg-zinc-950/80 px-1.5 py-0.5 rounded mt-1 border border-rose-500/30">
-                    Index
-                  </span>
+                  <span className="text-[9px] font-bold text-rose-300 bg-zinc-950/80 px-1.5 py-0.5 rounded mt-1 border border-rose-500/30"> {t("Index")} </span>
                 </div>
               )}
             </>
@@ -199,16 +194,11 @@ export const CameraView: React.FC<CameraViewProps> = ({
           <div className="h-16 w-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-4 text-rose-400">
             <Camera className="h-8 w-8" />
           </div>
-          <h3 className="text-lg sm:text-xl font-bold text-white mb-1.5">
-            MediaPipe Hand Tracking Ready
-          </h3>
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-md mb-6 leading-relaxed">
-            Move an index fingertip onto a drum to play it.
-            You can also click a drum or use keyboard shortcuts anytime!
-          </p>
+          <h3 className="text-lg sm:text-xl font-bold text-white mb-1.5"> {t("MediaPipe Hand Tracking Ready")} </h3>
+          <p className="text-xs sm:text-sm text-zinc-400 max-w-md mb-6 leading-relaxed"> {t("Move an index fingertip onto a drum to play it. You can also click a drum or use keyboard shortcuts anytime!")} </p>
           {cameraError && (
             <Alert variant="destructive" className="mb-4 max-w-md border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-              <AlertDescription className="text-xs text-rose-200">{cameraError}</AlertDescription>
+              <AlertDescription className="text-xs text-rose-200">{t(cameraError)}</AlertDescription>
             </Alert>
           )}
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -225,13 +215,11 @@ export const CameraView: React.FC<CameraViewProps> = ({
               ) : (
                 <Camera className="h-4 w-4 stroke-[2.5]" />
               )}
-              {isCameraInitializing ? 'Starting Camera...' : 'Start Webcam'}
+              {isCameraInitializing ? t("Starting Camera...") : t("Start Webcam")}
             </Button>
           </div>
           <p className="mt-4 text-[11px] text-zinc-400 flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            100% Private: All tracking is calculated locally in your browser.
-          </p>
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {t("100% Private: All tracking is calculated locally in your browser.")} </p>
         </div>
       )}
 
@@ -240,7 +228,7 @@ export const CameraView: React.FC<CameraViewProps> = ({
         <div className="absolute bottom-3 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
           <Badge variant="outline" className="h-auto gap-2 rounded-lg border-zinc-800 bg-zinc-950/80 px-2.5 py-1 text-xs font-normal text-zinc-300 backdrop-blur pointer-events-auto">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span className="font-mono text-[11px]">MediaPipe Index Tracking</span>
+            <span className="font-mono text-[11px]">{t("MediaPipe Index Tracking")}</span>
           </Badge>
 
           <div className="flex items-center gap-2 pointer-events-auto">
@@ -250,10 +238,10 @@ export const CameraView: React.FC<CameraViewProps> = ({
               size="sm"
               onClick={onToggleCamera}
               className="flex items-center gap-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700/80 px-2.5 py-1 text-xs font-medium text-zinc-200 transition-colors shadow"
-              title="Stop Camera"
+              title={t("Stop Camera")}
             >
               <CameraOff className="h-3.5 w-3.5 text-rose-400" />
-              <span>Stop Cam</span>
+              <span>{t("Stop Cam")}</span>
             </Button>
           </div>
         </div>

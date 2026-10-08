@@ -1,3 +1,5 @@
+import { RECORDING_CHALLENGES } from './recordings';
+import { SONG_CHALLENGES } from './songs';
 import { BeatNote, DrumType, RhythmChallenge } from '../types';
 
 // Helper to generate a repetitive drum pattern
@@ -26,6 +28,8 @@ function generatePattern(
 }
 
 export const CHALLENGES: RhythmChallenge[] = [
+  ...SONG_CHALLENGES,
+  ...RECORDING_CHALLENGES,
   {
     id: 'beginner-beat',
     title: 'Beginner Beat',

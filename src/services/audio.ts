@@ -21,6 +21,11 @@ class DrumAudioEngine {
     }
   }
 
+  public async unlock() {
+    this.initContext();
+    if (this.ctx?.state === 'suspended') await this.ctx.resume();
+  }
+
   public setVolume(vol: number) {
     this.volume = Math.max(0, Math.min(1, vol));
     if (this.masterGain && this.ctx) {

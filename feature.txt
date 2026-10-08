@@ -1,0 +1,11 @@
+share kết quả challenge
+profile người dùng 
+trang login/register
+xem lại đoạn chơi challenge trong profile
+follow người khác để thông báo khi họ share đoạn chơi trống
+bảng xếp hạng ở homepage
+room multiplayer
+
+chia sẻ có 2 lựa chọn: 
+- chia sẻ lên các nền tảng khác dưới dạng ảnh, khi ấn sẽ hiện popup ảnh kết quả preview
+- chia sẻ lên profile (sau đó nút chia sẻ trên bài profile sẽ là chia sẻ lên các nền tảng khác dưới dạng ảnh)

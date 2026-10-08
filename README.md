@@ -10,10 +10,31 @@ Toàn bộ nhận diện bàn tay và xử lý âm thanh được thực hiện 
 - Nhận diện tối đa hai bàn tay bằng MediaPipe Hand Landmarker.
 - Ba cách chơi: webcam, bàn phím và chuột/màn hình cảm ứng.
 - Chế độ **Free Play** với bộ đếm combo, tổng số lần đánh và phản hồi trực quan.
-- Chế độ **Rhythm Challenge** gồm 4 bài với nhiều mức độ, BPM, điểm số, combo, độ chính xác và xếp hạng.
-- Âm trống được tổng hợp bằng Web Audio API, không phụ thuộc file âm thanh hoặc dịch vụ bên ngoài.
+- Chế độ **Rhythm Challenge** gồm 4 bài luyện từng bước và 3 bài nhạc gốc: **Neon Drive** (96 BPM), **Sunset Groove** (112 BPM), **Midnight Rush** (132 BPM).
+- Thư viện nhạc có tìm kiếm, lọc thể loại, các mục Khám phá / Nhạc của tôi / Luyện trống; trang bài hát cho chọn độ khó, nghe trước và xem nốt theo từng đoạn.
+- Hai bản nhạc thật đi kèm: Greensleeves và Ode to Joy. Bản đồ nốt của hai bản thu là dữ liệu minh họa cho prototype, chưa được phân tích tự động. Nguồn và giấy phép nằm trong `public/audio/ATTRIBUTION.md`.
+- Luồng thêm nhạc: chọn file → đọc thời lượng → mô phỏng phân tích → xem trước nốt theo độ khó → lưu vào thư viện. BPM và các đoạn trong kết quả mô phỏng là dữ liệu mẫu, không phải kết quả nhận diện âm thanh. File nhạc lưu cục bộ bằng IndexedDB, tối đa 50 MB / 10 phút.
+- Bài nhạc có giai điệu, hợp âm, bass và nhịp trống hướng dẫn; chấm Perfect/Good/Miss theo thời gian phát thực tế, có tạm dừng và tiếp tục.
+- Bình luận trên bài chia sẻ ở profile và trang riêng `/posts/:clipId`.
+- Chia sẻ ảnh PNG kèm link bài đăng; hỗ trợ tải ảnh và sao chép link khi Web Share API không khả dụng.
+- Tìm người chơi theo tên hoặc handle tại `/users`, mở profile, theo dõi và bắt đầu cuộc trò chuyện.
+- Giao diện chat tại `/messages` và `/messages/:userId`, lịch sử và trạng thái đã đọc được lưu trong trình duyệt.
+- Tiếng Anh mặc định; tùy chọn tiếng Việt trong Settings → Language.
+- Âm trống được tổng hợp bằng Web Audio API. Ba bài nhạc gốc dùng file WAV đi kèm, không tải nhạc từ dịch vụ bên ngoài.
 - Tùy chỉnh âm lượng, hiệu ứng âm thanh, camera và chế độ lật gương.
 - Giao diện responsive sử dụng Tailwind CSS và các component shadcn/ui.
+
+## Phạm vi frontend cho thử thách nhạc
+
+Hiện chỉ triển khai trải nghiệm giao diện, phát nhạc, hiển thị bản đồ nốt và chấm điểm theo thời gian phát. Không có backend phân tích âm thanh, tách trống hoặc tự nhận diện BPM/cấu trúc bài hát.
+
+Nhạc mẫu của Virtual Drum dùng bản đồ nốt được chuẩn bị từ dữ liệu bài mẫu. Bản thu thật và nhạc người dùng thêm được gắn nhãn **Demo chart**, với BPM, các đoạn và nốt minh họa. Giao diện không trình bày dữ liệu mô phỏng như một kết quả phân tích thật.
+
+Dữ liệu phía giao diện gồm metadata bài hát, file nhạc, các đoạn (thời điểm bắt đầu/kết thúc), và ba bản đồ nốt theo độ khó (loại trống, thời điểm đánh). Khi có backend, có thể thay phần fixture bằng dữ liệu phân tích mà giữ luồng thư viện → trang bài hát → chơi → kết quả.
+
+## Phạm vi dữ liệu cộng đồng
+
+Tài khoản, profile, bình luận và chat hiện là **demo cục bộ**, chưa có backend hoặc xác thực người dùng. Bình luận, tin nhắn và bài đăng được lưu trong localStorage; các tab cùng trình duyệt nhận cập nhật qua sự kiện storage. Tin nhắn không được chuyển tới thiết bị của người khác. Link bài đăng demo có thể mở trên website; bài đăng mới chỉ tồn tại trong trình duyệt đã tạo nó. Để hỗ trợ chia sẻ và chat thực giữa nhiều thiết bị, cần backend, cơ sở dữ liệu và đăng nhập thật.
 
 ## Điều khiển
 
@@ -70,6 +91,8 @@ Camera chỉ hoạt động trên `localhost` hoặc website được phục v�
 | --- | --- |
 | `npm run dev` | Chạy Vite development server tại cổng `3000` |
 | `npm run lint` | Kiểm tra kiểu dữ liệu bằng TypeScript, không tạo file output |
+| `npm test` | Kiểm tra ngôn ngữ, tìm kiếm, bình luận, chat, link chia sẻ và chấm nhịp |
+| `npm run generate:tracks` | Tạo lại các file WAV nhạc gốc trong public/audio |
 | `npm run build` | Tạo production build trong thư mục `dist` |
 | `npm run preview` | Chạy thử production build ở máy local |
 | `npm run clean` | Xóa output build; cần shell hỗ trợ lệnh `rm` |

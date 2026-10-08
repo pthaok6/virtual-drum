@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/LanguageProvider';
 import React from 'react';
 import { DrumInfo, HitRating } from '../types';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ export const DrumPad: React.FC<DrumPadProps> = ({
   onClick,
   size = 'md',
 }) => {
+  const { t } = useLanguage();
   const isCymbal = drum.id === 'hihat' || drum.id === 'crash';
 
   const sizeClasses = {
@@ -41,7 +43,7 @@ export const DrumPad: React.FC<DrumPadProps> = ({
             boxShadow: `0 0 20px ${drum.glowColor}`,
           }}
         >
-          {hitRating ? hitRating.toUpperCase() : 'HIT!'}
+          {hitRating ? t(hitRating[0].toUpperCase() + hitRating.slice(1)).toUpperCase() : t("HIT!")}
         </div>
       )}
 
@@ -49,9 +51,7 @@ export const DrumPad: React.FC<DrumPadProps> = ({
         <div
           className="absolute -top-7 z-30 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-zinc-950 shadow-lg"
           style={{ backgroundColor: drum.color }}
-        >
-          Play this
-        </div>
+        > {t("Play this")} </div>
       )}
 
       {/* Ripple wave ring on hit */}
@@ -109,15 +109,14 @@ export const DrumPad: React.FC<DrumPadProps> = ({
             className="font-black tracking-wide text-white uppercase text-sm sm:text-base drop-shadow-md"
             style={{ color: isHit ? '#ffffff' : drum.color }}
           >
-            {drum.name}
+            {t(drum.name)}
           </span>
           <span className="text-[10px] sm:text-[11px] font-medium text-zinc-400">
-            {drum.subtitle}
+            {t(drum.subtitle)}
           </span>
 
           {/* Key shortcut pill */}
-          <div className="mt-1.5 flex items-center gap-1 rounded bg-zinc-900/90 border border-zinc-700/60 px-1.5 py-0.5 text-[9px] font-mono font-bold text-zinc-300 shadow-inner">
-            KEY: {drum.key}
+          <div className="mt-1.5 flex items-center gap-1 rounded bg-zinc-900/90 border border-zinc-700/60 px-1.5 py-0.5 text-[9px] font-mono font-bold text-zinc-300 shadow-inner"> {t("KEY:")} {drum.key}
           </div>
         </div>
 

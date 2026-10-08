@@ -1,3 +1,5 @@
+import type { Language } from './i18n/translate';
+
 export type ScreenType = 'home' | 'free-play' | 'challenge-select' | 'rhythm-game' | 'result';
 
 export type DrumType = 'kick' | 'snare' | 'hihat' | 'tom' | 'crash';
@@ -42,6 +44,15 @@ export interface BeatNote {
   hitRating?: HitRating;
 }
 
+export interface SongSection {
+  id: string; label: string; startMs: number; endMs: number; intensity: 'low' | 'medium' | 'high';
+}
+export interface SongInfo {
+  genre: string; color: string; source: 'recording' | 'original' | 'upload'; chartSource: 'prepared' | 'demo';
+  sections: SongSection[]; charts: Record<'Easy' | 'Medium' | 'Hard', BeatNote[]>;
+  credit?: { name: string; url: string; license: string; licenseUrl: string };
+}
+
 export interface RhythmChallenge {
   id: string;
   title: string;
@@ -51,6 +62,8 @@ export interface RhythmChallenge {
   durationSeconds: number;
   description: string;
   notes: BeatNote[];
+  music?: { src: string; introMs: number };
+  song?: SongInfo;
 }
 
 export interface GameResult {
@@ -64,10 +77,12 @@ export interface GameResult {
   misses: number;
   stars: number;
   rank: 'S' | 'A' | 'B' | 'C' | 'D';
+  sectionResults?: { label: string; accuracy: number; hits: number; misses: number }[];
   replayEvents?: { drum: DrumType; rating: HitRating; timeMs: number }[];
 }
 
 export interface AppSettings {
+  language: Language;
   cameraEnabled: boolean;
   selectedCameraId: string;
   mirrorCamera: boolean;

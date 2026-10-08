@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/LanguageProvider';
 import React from 'react';
 import { DRUMS } from '../data/drums';
 import { BeatNote, DrumType, HitRating } from '../types';
@@ -21,6 +22,7 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
   bpm,
   lastHitFeedback,
 }) => {
+  const { t } = useLanguage();
   // Timeline window: notes visible within next 2.2 seconds and past 0.4 seconds
   const lookAheadMs = 2200;
   const lookBehindMs = 400;
@@ -39,9 +41,7 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
       {/* Background timeline grid bars */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-            Rhythm Conveyor
-          </span>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400"> {t("Rhythm Conveyor")} </span>
           <Badge variant="secondary" className="rounded bg-zinc-800 px-1.5 font-mono text-[10px] text-zinc-300">
             {bpm} BPM
           </Badge>
@@ -58,7 +58,7 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
                 : 'bg-rose-500 text-white'
             }`}
           >
-            <span>{lastHitFeedback.rating}</span>
+            <span>{t(lastHitFeedback.rating[0].toUpperCase() + lastHitFeedback.rating.slice(1))}</span>
             {lastHitFeedback.combo > 1 && (
               <span className="text-[10px] opacity-80">x{lastHitFeedback.combo}</span>
             )}
@@ -77,9 +77,7 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
           className="absolute top-0 bottom-0 w-1 bg-gradient-to-b from-rose-400 via-amber-300 to-rose-400 z-20 shadow-[0_0_12px_rgba(244,63,94,0.8)]"
         >
           {/* Target Zone Header Pill */}
-          <Badge className="absolute -top-1 left-1/2 h-4 -translate-x-1/2 rounded-full bg-amber-400 px-1.5 py-0 text-[8px] font-black uppercase tracking-tighter text-zinc-950">
-            HIT
-          </Badge>
+          <Badge className="absolute -top-1 left-1/2 h-4 -translate-x-1/2 rounded-full bg-amber-400 px-1.5 py-0 text-[8px] font-black uppercase tracking-tighter text-zinc-950"> {t("HIT")} </Badge>
           {/* Target Circle reticle */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-10 w-10 rounded-full border-2 border-amber-300/80 pointer-events-none" />
         </div>
@@ -116,10 +114,10 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
                   boxShadow: note.hit ? 'none' : `0 0 15px ${drum.glowColor}`,
                 }}
               >
-                {drum.name.slice(0, 2)}
+                {t(drum.name).slice(0, 2)}
               </div>
               <span className="text-[9px] font-bold text-zinc-300 mt-0.5">
-                {drum.name}
+                {t(drum.name)}
               </span>
             </div>
           );
@@ -128,7 +126,7 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
 
       {/* Quick Legend of Upcoming Drum Colors */}
       <div className="mt-2 flex flex-wrap items-center justify-between text-[11px] text-zinc-400 px-1">
-        <span className="hidden sm:inline">Timing: Strike zone when icon reaches the glowing HIT line!</span>
+        <span className="hidden sm:inline">{t("Timing: Strike zone when icon reaches the glowing HIT line!")}</span>
         <div className="flex items-center gap-3">
           {DRUMS.map((d) => (
             <div key={d.id} className="flex items-center gap-1">
@@ -136,7 +134,7 @@ export const BeatTimeline: React.FC<BeatTimelineProps> = ({
                 className="h-2 w-2 rounded-full"
                 style={{ backgroundColor: d.color }}
               />
-              <span className="text-zinc-300 text-[10px]">{d.name}</span>
+              <span className="text-zinc-300 text-[10px]">{t(d.name)}</span>
             </div>
           ))}
         </div>

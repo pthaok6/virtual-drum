@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/LanguageProvider';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AppSettings,
@@ -48,6 +49,7 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
   onNavigate,
   settings,
 }) => {
+  const { t, locale } = useLanguage();
   const [countdown, setCountdown] = useState<number | null>(3);
   const [currentNoteIndex, setCurrentNoteIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -252,15 +254,11 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
     <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl flex-col px-4 py-3 sm:px-6 sm:py-5 lg:px-8">
       {countdown !== null && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
-          <div className="mb-2 text-sm font-semibold uppercase tracking-widest text-zinc-400 sm:text-base">
-            Get Ready
-          </div>
+          <div className="mb-2 text-sm font-semibold uppercase tracking-widest text-zinc-400 sm:text-base"> {t("Get Ready")} </div>
           <div className="bg-gradient-to-tr from-rose-500 to-amber-400 bg-clip-text text-8xl font-black text-transparent drop-shadow-2xl sm:text-9xl">
-            {countdown === 0 ? 'GO!' : countdown}
+            {countdown === 0 ? t("GO!") : countdown}
           </div>
-          <p className="mt-4 text-xs text-zinc-400">
-            Play the highlighted drum. The next step waits for you.
-          </p>
+          <p className="mt-4 text-xs text-zinc-400"> {t("Play the highlighted drum. The next step waits for you.")} </p>
         </div>
       )}
 
@@ -274,32 +272,30 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
             className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Abort</span>
+            <span className="hidden sm:inline">{t("Abort")}</span>
           </Button>
           <h1 className="flex items-center gap-2 text-base font-bold tracking-tight text-white sm:text-lg">
-            <span>{challenge.title}</span>
-            <Badge variant="outline" className="rounded border-amber-500/20 bg-amber-500/10 px-2 font-mono text-xs font-normal text-amber-400">
-              Guided
-            </Badge>
+            <span>{t(challenge.title)}</span>
+            <Badge variant="outline" className="rounded border-amber-500/20 bg-amber-500/10 px-2 font-mono text-xs font-normal text-amber-400"> {t("Guided")} </Badge>
           </h1>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
           <Card className="gap-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-100">
-            <span className="text-[10px] font-bold uppercase text-zinc-500">Score</span>
+            <span className="text-[10px] font-bold uppercase text-zinc-500">{t("Score")}</span>
             <span className="font-mono text-base font-black text-white sm:text-lg">
-              {score.toLocaleString()}
+              {score.toLocaleString(locale)}
             </span>
           </Card>
           <Card className="flex-row items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-amber-400">
             <Flame className="h-4 w-4" />
             <div className="flex flex-col">
-              <span className="text-[9px] font-bold uppercase text-amber-500/80">Combo</span>
+              <span className="text-[9px] font-bold uppercase text-amber-500/80">{t("Combo")}</span>
               <span className="font-mono text-sm font-black">{combo}</span>
             </div>
           </Card>
           <Card className="hidden gap-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-100 sm:flex">
-            <span className="text-[10px] font-bold uppercase text-zinc-500">Accuracy</span>
+            <span className="text-[10px] font-bold uppercase text-zinc-500">{t("Accuracy")}</span>
             <span className="font-mono text-sm font-black text-emerald-400">{accuracy}%</span>
           </Card>
           <Card className="flex-row items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-300">
@@ -313,7 +309,7 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
 
       <Progress
         value={progressPercent}
-        aria-label="Challenge progress"
+        aria-label={t("Challenge progress")}
         className="mt-2 gap-0 [&_[data-slot=progress-track]]:h-1.5 [&_[data-slot=progress-track]]:bg-zinc-900 [&_[data-slot=progress-indicator]]:bg-gradient-to-r [&_[data-slot=progress-indicator]]:from-rose-500 [&_[data-slot=progress-indicator]]:to-amber-500"
       />
 
@@ -333,13 +329,11 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
                   {currentDrum.key}
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                    Play this drum
-                  </span>
+                  <span className="block text-[10px] font-bold uppercase tracking-widest text-zinc-500"> {t("Play this drum")} </span>
                   <span className="text-xl font-black uppercase" style={{ color: currentDrum.color }}>
-                    {currentDrum.name}
+                    {t(currentDrum.name)}
                   </span>
-                  <p className="text-[11px] text-zinc-400">Waiting until you hit the correct drum</p>
+                  <p className="text-[11px] text-zinc-400">{t("Waiting until you hit the correct drum")}</p>
                 </div>
               </div>
               {lastHitFeedback && (
@@ -350,12 +344,12 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
                       : 'bg-rose-500 text-white'
                   }`}
                 >
-                  {lastHitFeedback.rating === 'perfect' ? 'Correct' : 'Wrong drum'}
+                  {lastHitFeedback.rating === 'perfect' ? t("Correct") : t("Wrong drum")}
                 </Badge>
               )}
             </>
           ) : (
-            <div className="w-full text-center font-bold text-emerald-400">Challenge complete!</div>
+            <div className="w-full text-center font-bold text-emerald-400">{t("Challenge complete!")}</div>
           )}
         </Card>
 
@@ -385,8 +379,8 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
 
           <Card className="justify-between gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 py-0 text-zinc-100 lg:col-span-4">
             <CardHeader className="mb-2 flex-row items-center justify-between border-b border-zinc-800 p-4 pb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">Guided Drums</span>
-              <span className="text-[10px] text-zinc-500">Tap / Camera</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">{t("Guided Drums")}</span>
+              <span className="text-[10px] text-zinc-500">{t("Tap / Camera")}</span>
             </CardHeader>
 
             <CardContent className="grid grid-cols-2 justify-items-center gap-2 px-4">
@@ -420,15 +414,15 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
 
             <CardContent className="mt-3 grid grid-cols-3 gap-1 border-t border-zinc-800 p-4 pt-2 text-center">
               <Card className="gap-0 rounded border border-zinc-800 bg-zinc-950/60 p-1 py-1 text-zinc-100">
-                <span className="block text-[9px] font-bold text-emerald-400">CORRECT</span>
+                <span className="block text-[9px] font-bold text-emerald-400">{t("CORRECT")}</span>
                 <span className="font-mono text-xs font-bold text-white">{correctHits}</span>
               </Card>
               <Card className="gap-0 rounded border border-zinc-800 bg-zinc-950/60 p-1 py-1 text-zinc-100">
-                <span className="block text-[9px] font-bold text-rose-400">WRONG</span>
+                <span className="block text-[9px] font-bold text-rose-400">{t("WRONG")}</span>
                 <span className="font-mono text-xs font-bold text-white">{mistakes}</span>
               </Card>
               <Card className="gap-0 rounded border border-zinc-800 bg-zinc-950/60 p-1 py-1 text-zinc-100">
-                <span className="block text-[9px] font-bold text-amber-400">MAX COMBO</span>
+                <span className="block text-[9px] font-bold text-amber-400">{t("MAX COMBO")}</span>
                 <span className="font-mono text-xs font-bold text-white">{maxCombo}</span>
               </Card>
             </CardContent>

@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/LanguageProvider';
 import React, { useEffect } from 'react';
 import { GameResult, ScreenType } from '../types';
 import confetti from 'canvas-confetti';
@@ -36,6 +37,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   onShareImage,
   onShareProfile,
 }) => {
+  const { t, locale } = useLanguage();
   useEffect(() => {
     // Launch celebratory confetti if completed with good score
     if (result.accuracy >= 65) {
@@ -73,23 +75,23 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
   const getPerformanceFeedback = () => {
     if (result.accuracy >= 95) {
       return {
-        headline: 'Virtuoso Drum Master!',
-        body: 'Flawless rhythmic precision! Your timing was razor-sharp on every downbeat.',
+        headline: t("Virtuoso Drum Master!"),
+        body: t("Flawless rhythmic precision! Your timing was razor-sharp on every downbeat."),
       };
     } else if (result.accuracy >= 80) {
       return {
-        headline: 'Great Performance!',
-        body: 'Superb rhythm and steady tempo control. Keep practicing to hit pure S-Rank perfection.',
+        headline: t("Great Performance!"),
+        body: t("Superb rhythm and steady tempo control. Keep practicing to hit pure S-Rank perfection."),
       };
     } else if (result.accuracy >= 60) {
       return {
-        headline: 'Good Effort!',
-        body: 'You locked into several great grooves. Focus on anticipating the hit conveyor line.',
+        headline: t("Good Effort!"),
+        body: t("You locked into several great grooves. Focus on anticipating the hit conveyor line."),
       };
     } else {
       return {
-        headline: 'Session Complete',
-        body: 'Rhythm takes warm-up time. Try Free Play or the Beginner Beat to hone hand motions.',
+        headline: t("Session Complete"),
+        body: t("Rhythm takes warm-up time. Try Free Play or the Beginner Beat to hone hand motions."),
       };
     }
   };
@@ -101,15 +103,13 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       {/* Trophy Badge */}
       <Badge variant="outline" className="mb-4 h-auto gap-2 border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-xs font-semibold text-amber-400">
         <Trophy className="h-4 w-4" />
-        <span>Rhythm Challenge Finished</span>
+        <span>{t("Rhythm Challenge Finished")}</span>
       </Badge>
 
       {/* Header */}
-      <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase text-center mb-1">
-        Challenge Complete
-      </h1>
+      <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase text-center mb-1"> {t("Challenge Complete")} </h1>
       <p className="text-sm text-zinc-400 font-medium mb-6">
-        {result.challenge.title} • {result.challenge.bpm} BPM
+        {t(result.challenge.title)} • {result.challenge.bpm} BPM
       </p>
 
       {/* Main Score & Rank Card */}
@@ -118,20 +118,16 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           <div className="flex items-center gap-4">
             {getRankBadge(result.rank)}
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-                Final Score
-              </span>
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-500"> {t("Final Score")} </span>
               <div className="text-4xl sm:text-5xl font-black text-white font-mono tracking-tight">
-                {result.score.toLocaleString()}
+                {result.score.toLocaleString(locale)}
               </div>
             </div>
           </div>
 
           {/* Star Rating */}
           <div className="flex flex-col items-center sm:items-end">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
-              Rating
-            </span>
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5"> {t("Rating")} </span>
             <div className="flex items-center gap-1.5">
               {[1, 2, 3].map((starIndex) => (
                 <Star
@@ -152,9 +148,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           {/* Accuracy */}
           <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 py-3.5 text-zinc-100">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
-              <Target className="h-3 w-3 text-emerald-400" />
-              Accuracy
-            </span>
+              <Target className="h-3 w-3 text-emerald-400" /> {t("Accuracy")} </span>
             <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400 mt-1">
               {result.accuracy}%
             </span>
@@ -163,9 +157,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           {/* Max Combo */}
           <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 py-3.5 text-zinc-100">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
-              <Flame className="h-3 w-3 text-amber-400" />
-              Max Combo
-            </span>
+              <Flame className="h-3 w-3 text-amber-400" /> {t("Max Combo")} </span>
             <span className="text-xl sm:text-2xl font-black font-mono text-amber-400 mt-1">
               {result.maxCombo}x
             </span>
@@ -174,9 +166,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           {/* Perfect Hits */}
           <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 py-3.5 text-zinc-100">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-amber-300" />
-              Perfect Hits
-            </span>
+              <Sparkles className="h-3 w-3 text-amber-300" /> {t("Perfect Hits")} </span>
             <span className="text-xl sm:text-2xl font-black font-mono text-white mt-1">
               {result.perfectHits}
             </span>
@@ -185,9 +175,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           {/* Misses */}
           <Card className="gap-0 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5 py-3.5 text-zinc-100">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3 text-rose-400" />
-              Misses
-            </span>
+              <CheckCircle2 className="h-3 w-3 text-rose-400" /> {t("Misses")} </span>
             <span className="text-xl sm:text-2xl font-black font-mono text-rose-400 mt-1">
               {result.misses}
             </span>
@@ -201,10 +189,12 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         </CardContent>
       </Card>
 
+      {result.sectionResults && result.sectionResults.length > 0 && <section className="mb-6 w-full rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5"><h2 className="mb-4 text-sm font-bold text-white">{t('Your rhythm by section')}</h2><div className="grid gap-3 sm:grid-cols-2">{result.sectionResults.map((section, index) => <div key={index} className="rounded-xl bg-zinc-950 p-3"><div className="flex justify-between text-xs"><span className="font-bold text-zinc-300">{t(section.label)}</span><strong className={section.accuracy >= 80 ? 'text-emerald-400' : 'text-amber-400'}>{section.accuracy}%</strong></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div style={{ width: section.accuracy + '%' }} className="h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-400" /></div><p className="mt-2 text-[10px] text-zinc-500">{t(section.accuracy >= 80 ? 'Great groove' : 'Keep practicing this section')}</p></div>)}</div></section>}
+
       {/* Primary Actions: Play Again, Choose Another Challenge, Back to Home */}
       <div className="mb-3 grid w-full gap-3 sm:grid-cols-2">
-        <Button onClick={onShareImage} size="lg" className="w-full gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 font-bold text-zinc-950 hover:opacity-90"><ImageIcon className="h-4 w-4" /> Chia sẻ ảnh ra ngoài</Button>
-        <Button onClick={onShareProfile} variant="outline" size="lg" className="w-full gap-2 rounded-xl border-zinc-700 bg-zinc-800 font-bold text-white hover:bg-zinc-700"><Share2 className="h-4 w-4" /> Chia sẻ lên profile</Button>
+        <Button onClick={onShareImage} size="lg" className="w-full gap-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 font-bold text-zinc-950 hover:opacity-90"><ImageIcon className="h-4 w-4" /> {t("Share image externally")}</Button>
+        <Button onClick={onShareProfile} variant="outline" size="lg" className="w-full gap-2 rounded-xl border-zinc-700 bg-zinc-800 font-bold text-white hover:bg-zinc-700"><Share2 className="h-4 w-4" /> {t("Share to profile")}</Button>
       </div>
       <div className="flex flex-col sm:flex-row items-center gap-3 w-full justify-center">
         <Button
@@ -214,7 +204,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-3.5 text-sm font-bold text-zinc-950 shadow-lg shadow-amber-500/25 hover:scale-105 active:scale-95 transition-all"
         >
           <RotateCcw className="h-4 w-4 stroke-[2.5]" />
-          <span>Play Again</span>
+          <span>{t("Play Again")}</span>
         </Button>
 
         <Button
@@ -225,7 +215,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800/80 px-6 py-3.5 text-sm font-semibold text-white hover:bg-zinc-700 active:scale-95 transition-all"
         >
           <ListMusic className="h-4 w-4" />
-          <span>Choose Another Challenge</span>
+          <span>{t("Choose Another Challenge")}</span>
         </Button>
 
         <Button
@@ -236,7 +226,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-3.5 text-sm font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800 active:scale-95 transition-all"
         >
           <Home className="h-4 w-4" />
-          <span>Home</span>
+          <span>{t("Home")}</span>
         </Button>
       </div>
     </div>
