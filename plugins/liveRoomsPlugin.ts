@@ -122,6 +122,9 @@ export function liveRoomsPlugin(): Plugin {
     for (const client of sseClients) {
       try {
         client.write(payload);
+        if (typeof (client as any).flush === 'function') {
+          (client as any).flush();
+        }
       } catch {
         sseClients.delete(client);
       }
@@ -156,10 +159,15 @@ export function liveRoomsPlugin(): Plugin {
             'Cache-Control': 'no-cache, no-transform',
             'Connection': 'keep-alive',
             'Access-Control-Allow-Origin': '*',
+            'X-Accel-Buffering': 'no',
           });
+          if (typeof (res as any).flushHeaders === 'function') {
+            (res as any).flushHeaders();
+          }
 
           // Immediately send existing rooms state to newly connected client
           res.write(`data: ${JSON.stringify({ type: 'ROOMS_UPDATED', rooms })}\n\n`);
+          if (typeof (res as any).flush === 'function') (res as any).flush();
           sseClients.add(res);
 
           const pingInterval = setInterval(() => {
@@ -409,6 +417,22 @@ export function liveRoomsPlugin(): Plugin {
           const targetId = drumHitMatch[1];
           const body = await parseJsonBody(req);
           broadcastEvent({ type: 'DRUM_HIT', roomId: targetId, hit: body.hit });
+          return sendJson(res, 200, { success: true });
+        }
+
+        // 13. POST /api/live-rooms/:roomId/signal (WebRTC P2P relay)
+        const signalMatch = url.match(/^\/api\/live-rooms\/([^/]+)\/signal$/);
+        if (signalMatch && req.method === 'POST') {
+          const targetId = signalMatch[1];
+          const body = await parseJsonBody(req);
+          const { from, to, signal } = body;
+          broadcastEvent({
+            type: 'WEBRTC_SIGNAL',
+            roomId: targetId,
+            from,
+            to,
+            signal,
+          });
           return sendJson(res, 200, { success: true });
         }
 

@@ -82,6 +82,7 @@ class RoomService {
   > = new Map();
   private drumHitListeners: Map<string, Set<(hit: DrumHitBroadcast) => void>> = new Map();
   private kickedListeners: Map<string, Set<(kickedUserId: string) => void>> = new Map();
+  private signalListeners: Set<(payload: any) => void> = new Set();
 
   constructor() {
     this.initBroadcastChannel();
@@ -137,11 +138,23 @@ class RoomService {
 
       case 'ROOM_UPDATED': {
         if (data.room) {
-          this.mergeRoom(data.room);
-          const messages = this.getMessages(data.room.id);
-          this.notifySingleRoomUpdated(data.room.id, data.room, messages);
-          this.notifyRoomsUpdated(this.getRooms());
+          const sanitized = this.sanitizeRoom(data.room);
+          if (sanitized) {
+            this.mergeRoom(sanitized);
+            const messages = this.getMessages(sanitized.id);
+            this.notifySingleRoomUpdated(sanitized.id, sanitized, messages);
+            this.notifyRoomsUpdated(this.getRooms());
+          }
         }
+        break;
+      }
+
+      case 'WEBRTC_SIGNAL': {
+        this.signalListeners.forEach((cb) => {
+          try {
+            cb(data);
+          } catch {}
+        });
         break;
       }
 
@@ -198,10 +211,13 @@ class RoomService {
 
       case 'MEDIA_STATE_CHANGED': {
         if (data.room) {
-          this.mergeRoom(data.room);
-          const messages = this.getMessages(data.room.id);
-          this.notifySingleRoomUpdated(data.room.id, data.room, messages);
-          this.notifyRoomsUpdated(this.getRooms());
+          const sanitized = this.sanitizeRoom(data.room);
+          if (sanitized) {
+            this.mergeRoom(sanitized);
+            const messages = this.getMessages(sanitized.id);
+            this.notifySingleRoomUpdated(sanitized.id, sanitized, messages);
+            this.notifyRoomsUpdated(this.getRooms());
+          }
         }
         break;
       }
@@ -222,6 +238,23 @@ class RoomService {
       // Fallback to local storage if endpoint unavailable
     }
     return this.getRooms();
+  }
+
+  public async fetchRoomFromServer(roomId: string): Promise<LiveRoom | null> {
+    try {
+      const res = await fetch(`/api/live-rooms/${roomId}`, { cache: 'no-store' });
+      if (res.ok) {
+        const remoteRoom = await res.json();
+        const sanitized = this.sanitizeRoom(remoteRoom);
+        if (sanitized) {
+          this.mergeRoom(sanitized);
+          const messages = this.getMessages(roomId);
+          this.notifySingleRoomUpdated(roomId, sanitized, messages);
+          return sanitized;
+        }
+      }
+    } catch {}
+    return this.getRoom(roomId);
   }
 
   public async fetchMessagesFromServer(roomId: string): Promise<RoomChatMessage[]> {
@@ -283,15 +316,10 @@ class RoomService {
       if (san) map.set(san.id, san);
     });
 
+    // Remote rooms from server are authoritative
     incomingRooms.forEach((r) => {
       const san = this.sanitizeRoom(r);
-      if (!san) return;
-      const existing = map.get(san.id);
-      if (
-        !existing ||
-        san.updatedAt >= existing.updatedAt ||
-        san.members.length !== existing.members.length
-      ) {
+      if (san) {
         map.set(san.id, san);
       }
     });
@@ -302,6 +330,17 @@ class RoomService {
     }
     this.saveRoomsToLocal(combined);
     this.notifyRoomsUpdated(combined);
+
+    // Also notify any single active room listeners with updated member data
+    this.singleRoomListeners.forEach((listeners, roomId) => {
+      const current = map.get(roomId) || null;
+      const msgs = this.getMessages(roomId);
+      listeners.forEach((cb) => {
+        try {
+          cb(current, msgs);
+        } catch {}
+      });
+    });
   }
 
   // ================= 2. LOCAL BROADCAST & STORAGE LISTENER =================
@@ -504,19 +543,10 @@ class RoomService {
       this.saveRoomsToLocal(updated);
       return true;
     } else {
-      const current = rooms[idx];
-      if (
-        sanitized.updatedAt >= current.updatedAt ||
-        sanitized.members.length !== current.members.length ||
-        sanitized.isLocked !== current.isLocked ||
-        sanitized.activeScreenShareUser !== current.activeScreenShareUser
-      ) {
-        rooms[idx] = sanitized;
-        this.saveRoomsToLocal(rooms);
-        return true;
-      }
+      rooms[idx] = sanitized;
+      this.saveRoomsToLocal(rooms);
+      return true;
     }
-    return false;
   }
 
   private handleBroadcastMessage(payload: BroadcastPayload) {
@@ -1143,11 +1173,28 @@ class RoomService {
 
   public broadcastDrumHit(
     roomId: string,
-    senderId: string,
-    senderName: string,
-    drum: DrumType,
-    velocity: number = 0.9
+    sender: string | { id: string; username: string },
+    drumOrName: string | DrumType,
+    velocityOrDrum?: DrumType | number,
+    optVelocity?: number
   ) {
+    let senderId: string;
+    let senderName: string;
+    let drum: DrumType;
+    let velocity: number;
+
+    if (typeof sender === 'object' && sender !== null) {
+      senderId = sender.id;
+      senderName = sender.username;
+      drum = drumOrName as DrumType;
+      velocity = typeof velocityOrDrum === 'number' ? velocityOrDrum : 0.85;
+    } else {
+      senderId = String(sender);
+      senderName = String(drumOrName);
+      drum = velocityOrDrum as DrumType;
+      velocity = typeof optVelocity === 'number' ? optVelocity : 0.85;
+    }
+
     const hit: DrumHitBroadcast = {
       roomId,
       senderId,
@@ -1174,6 +1221,15 @@ class RoomService {
     this.drumHitListeners.get(roomId)!.add(callback);
     return () => {
       this.drumHitListeners.get(roomId)?.delete(callback);
+    };
+  }
+
+  // ================= WEBRTC SIGNALING =================
+
+  public onWebRTCSignal(callback: (payload: any) => void): () => void {
+    this.signalListeners.add(callback);
+    return () => {
+      this.signalListeners.delete(callback);
     };
   }
 

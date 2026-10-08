@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LiveRoom, RoomMember, RoomChatMessage, DrumType, DrumHitBroadcast } from '../types';
 import { roomService } from '../services/roomService';
 import { mediaManager } from '../services/mediaManager';
+import { webrtcManager } from '../services/webrtcManager';
 import { audioEngine } from '../services/audio';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -74,6 +75,10 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [localAudioLevel, setLocalAudioLevel] = useState(0);
 
+  // WebRTC remote streams from peers
+  const [remoteScreenStream, setRemoteScreenStream] = useState<MediaStream | null>(null);
+  const [remoteCameraStreams, setRemoteCameraStreams] = useState<{ [peerId: string]: MediaStream }>({});
+
   // Active hit visual feedback (map of memberId or drum to timestamp)
   const [lastDrumHits, setLastDrumHits] = useState<{ [drum: string]: number }>({});
   const [recentMemberHits, setRecentMemberHits] = useState<{ [memberId: string]: string }>({});
@@ -91,6 +96,73 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
 
   const isOwner = Boolean(user && room && room.ownerId === user.id);
   const currentMember = room?.members.find((m) => m.id === user?.id);
+
+  // WebRTC initialization and peer connection setup
+  useEffect(() => {
+    if (!user) return;
+    webrtcManager.init(roomId, user.id);
+
+    const unsubSignal = roomService.onWebRTCSignal((data) => {
+      if (data.roomId === roomId && data.to === user.id) {
+        webrtcManager.handleSignal(data.from, data.signal);
+      }
+    });
+
+    const unsubStreams = webrtcManager.onRemoteStream((peerId, type, stream) => {
+      if (type === 'screen') {
+        setRemoteScreenStream(stream);
+      } else if (type === 'camera') {
+        setRemoteCameraStreams((prev) => {
+          if (!stream) {
+            const next = { ...prev };
+            delete next[peerId];
+            return next;
+          }
+          return { ...prev, [peerId]: stream };
+        });
+      }
+    });
+
+    return () => {
+      unsubSignal();
+      unsubStreams();
+      webrtcManager.destroy();
+    };
+  }, [roomId, user?.id]);
+
+  // Connect to peers as room members list changes
+  useEffect(() => {
+    if (!user || !room) return;
+    const otherMembers = (room.members || []).filter((m) => m && m.id !== user.id);
+    otherMembers.forEach((m) => {
+      webrtcManager.connectToPeer(m.id);
+    });
+  }, [room?.members, user?.id]);
+
+  // Active sync heartbeat to guarantee instant cross-browser synchronization
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      roomService.fetchRoomFromServer(roomId).then((serverRoom) => {
+        if (serverRoom) {
+          setRoom((prev) => {
+            if (
+              !prev ||
+              prev.updatedAt !== serverRoom.updatedAt ||
+              prev.members.length !== serverRoom.members.length ||
+              prev.activeScreenShareUser !== serverRoom.activeScreenShareUser ||
+              JSON.stringify(prev.members) !== JSON.stringify(serverRoom.members)
+            ) {
+              return serverRoom;
+            }
+            return prev;
+          });
+        }
+      });
+      roomService.fetchMessagesFromServer(roomId);
+    }, 1200);
+
+    return () => clearInterval(syncInterval);
+  }, [roomId]);
 
   // Subscribe to room updates & messages
   useEffect(() => {
@@ -228,15 +300,23 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
     };
   }, []);
 
-  // Update screen video stream attachment
+  // Update screen video stream attachment (local presenter OR remote presenter)
   useEffect(() => {
     if (screenVideoRef.current) {
-      const activeStream = mediaManager.getScreenStream();
-      if (activeStream && screenVideoRef.current.srcObject !== activeStream) {
-        screenVideoRef.current.srcObject = activeStream;
+      if (isScreenSharing) {
+        const activeStream = mediaManager.getScreenStream();
+        if (activeStream && screenVideoRef.current.srcObject !== activeStream) {
+          screenVideoRef.current.srcObject = activeStream;
+        }
+      } else if (remoteScreenStream) {
+        if (screenVideoRef.current.srcObject !== remoteScreenStream) {
+          screenVideoRef.current.srcObject = remoteScreenStream;
+        }
+      } else {
+        screenVideoRef.current.srcObject = null;
       }
     }
-  }, [isScreenSharing, room?.activeScreenShareUser]);
+  }, [isScreenSharing, remoteScreenStream, room?.activeScreenShareUser]);
 
   // Update local camera video stream attachment
   useEffect(() => {
@@ -255,6 +335,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
     try {
       if (isMicOn) {
         mediaManager.setMicMuted(true);
+        webrtcManager.setLocalAudioStream(null);
         setIsMicOn(false);
         roomService.updateMediaState(roomId, user.id, {
           isMuted: true,
@@ -262,8 +343,9 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
           audioLevel: 0,
         });
       } else {
-        await mediaManager.startMicrophone();
+        const stream = await mediaManager.startMicrophone();
         mediaManager.setMicMuted(false);
+        webrtcManager.setLocalAudioStream(stream);
         setIsMicOn(true);
         roomService.updateMediaState(roomId, user.id, {
           isMuted: false,
@@ -280,10 +362,12 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
     try {
       if (isCameraOn) {
         mediaManager.stopCamera();
+        webrtcManager.setLocalCameraStream(null);
         setIsCameraOn(false);
         roomService.updateMediaState(roomId, user.id, { isCameraOn: false });
       } else {
         const stream = await mediaManager.startCamera();
+        webrtcManager.setLocalCameraStream(stream);
         setIsCameraOn(true);
         roomService.updateMediaState(roomId, user.id, { isCameraOn: true });
         if (cameraVideoRef.current) {
@@ -301,6 +385,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
     try {
       if (isScreenSharing) {
         mediaManager.stopScreenShare();
+        webrtcManager.setLocalScreenStream(null);
         setIsScreenSharing(false);
         roomService.updateMediaState(roomId, user.id, { isScreenSharing: false });
       } else {
@@ -313,11 +398,13 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
 
         const stream = await mediaManager.startScreenShare(() => {
           setIsScreenSharing(false);
+          webrtcManager.setLocalScreenStream(null);
           if (user) {
             roomService.updateMediaState(roomId, user.id, { isScreenSharing: false });
           }
         });
 
+        webrtcManager.setLocalScreenStream(stream);
         setIsScreenSharing(true);
         roomService.updateMediaState(roomId, user.id, { isScreenSharing: true });
 
@@ -619,6 +706,19 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
                             autoPlay
                             playsInline
                             muted
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : !isSelf && member.isCameraOn && remoteCameraStreams[member.id] ? (
+                        <div className="h-16 w-16 rounded-xl overflow-hidden border-2 border-sky-500 relative bg-black">
+                          <video
+                            ref={(el) => {
+                              if (el && el.srcObject !== remoteCameraStreams[member.id]) {
+                                el.srcObject = remoteCameraStreams[member.id];
+                              }
+                            }}
+                            autoPlay
+                            playsInline
                             className="w-full h-full object-cover"
                           />
                         </div>
