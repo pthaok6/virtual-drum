@@ -129,4 +129,4 @@ public/mediapipe/
 
 ## Quyền riêng tư
 
-Video từ webcam chỉ được xử lý cục bộ để xác định vị trí đầu ngón trỏ. Ứng dụng không ghi hình, không tải video lên server và không yêu cầu kết nối tới dịch vụ AI bên ngoài.
+Video từ webcam chỉ được xử lý cục bộ để xác định vị trí đầu ngón trỏ. Ứng dụng không ghi hình, không tải video lên server và không yêu cầu kết nối tới dịch vụ AI bên ngoài. 
