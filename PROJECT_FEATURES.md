@@ -33,7 +33,7 @@
   - Hệ thống tính toán độc lập tay trái và tay phải, cho phép thực hiện các kỹ thuật gõ trống 2 tay (drum rolls, alternating stickings).
 
 #### 2. Tính Toán Động Lực Học Lực Đánh (Velocity Impact Calculation)
-*(Chức năng hiển thị: Thẻ `VELOCITY IMPACT: 85%`)*
+*(Chức năng hiển thị: Thẻ `VELOCITY IMPACT)*
 - **Mô tả chi tiết:** Khi ngón tay di chuyển vào vùng mặt trống, hệ thống theo dõi đạo hàm vận tốc di chuyển theo trục Y ($\Delta Y / \Delta t$) trong 3 khung hình liên tiếp. Tốc độ bổ ngón tay xuống càng nhanh, chỉ số phần trăm Velocity càng cao (từ 20% đến 120%).
 - **Tác dụng đối với dự án:**
   - Mang lại cảm giác chơi nhạc chân thực như bộ trống cơ thật: đánh nhẹ thì âm thanh phát ra êm dịu, đánh mạnh/dứt khoát thì âm thanh vang dội, đanh thép.
