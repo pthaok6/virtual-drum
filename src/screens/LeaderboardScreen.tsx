@@ -28,7 +28,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
   onNavigate,
   onSelectChallengeToPlay,
 }) => {
-  const { user } = useAuth();
+  const { user, openAuthModal } = useAuth();
   const [selectedTrack, setSelectedTrack] = useState<string>(CHALLENGES[0]?.id || 'beginner-beat');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [personalBest, setPersonalBest] = useState<PersonalBest | null>(null);
@@ -192,57 +192,73 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
               </div>
             </div>
 
-            {personalBest ? (
-              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                <div>
-                  <span className="text-[10px] text-zinc-500 block uppercase font-bold">High Score</span>
-                  <span className="font-mono text-lg font-black text-amber-400">
-                    {personalBest.highScore.toLocaleString()}
-                  </span>
+            {user ? (
+              personalBest ? (
+                <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">High Score</span>
+                    <span className="font-mono text-lg font-black text-amber-400">
+                      {personalBest.highScore.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Accuracy</span>
+                    <span className="font-mono text-sm font-bold text-emerald-400">
+                      {personalBest.accuracy}%
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-zinc-500 block uppercase font-bold">Max Combo</span>
+                    <span className="font-mono text-sm font-bold text-rose-400">
+                      {personalBest.maxCombo}x
+                    </span>
+                  </div>
+                  <Badge className={`px-2.5 py-1 text-xs rounded-md ${getRankBadgeClass(personalBest.rank)}`}>
+                    Rank {personalBest.rank}
+                  </Badge>
+                  {onSelectChallengeToPlay && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => onSelectChallengeToPlay(selectedTrack)}
+                      className="rounded-xl bg-amber-500 text-zinc-950 font-bold hover:bg-amber-400 text-xs"
+                    >
+                      <Play className="h-3.5 w-3.5 mr-1 fill-current" />
+                      Beat Record
+                    </Button>
+                  )}
                 </div>
-                <div>
-                  <span className="text-[10px] text-zinc-500 block uppercase font-bold">Accuracy</span>
-                  <span className="font-mono text-sm font-bold text-emerald-400">
-                    {personalBest.accuracy}%
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-zinc-400">
+                    You haven't completed this track yet. Give it a shot!
                   </span>
+                  {onSelectChallengeToPlay && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => onSelectChallengeToPlay(selectedTrack)}
+                      className="rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 text-xs"
+                    >
+                      <Play className="h-3.5 w-3.5 mr-1 fill-current" />
+                      Play Now
+                    </Button>
+                  )}
                 </div>
-                <div>
-                  <span className="text-[10px] text-zinc-500 block uppercase font-bold">Max Combo</span>
-                  <span className="font-mono text-sm font-bold text-rose-400">
-                    {personalBest.maxCombo}x
-                  </span>
-                </div>
-                <Badge className={`px-2.5 py-1 text-xs rounded-md ${getRankBadgeClass(personalBest.rank)}`}>
-                  Rank {personalBest.rank}
-                </Badge>
-                {onSelectChallengeToPlay && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => onSelectChallengeToPlay(selectedTrack)}
-                    className="rounded-xl bg-amber-500 text-zinc-950 font-bold hover:bg-amber-400 text-xs"
-                  >
-                    <Play className="h-3.5 w-3.5 mr-1 fill-current" />
-                    Beat Record
-                  </Button>
-                )}
-              </div>
+              )
             ) : (
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-zinc-400">
-                  You haven't completed this track yet. Give it a shot!
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs text-amber-200">
+                  Guest accounts cannot record scores on the Leaderboard. Please sign in to save your records!
                 </span>
-                {onSelectChallengeToPlay && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => onSelectChallengeToPlay(selectedTrack)}
-                    className="rounded-xl bg-rose-500 text-white font-bold hover:bg-rose-600 text-xs"
-                  >
-                    <Play className="h-3.5 w-3.5 mr-1 fill-current" />
-                    Play Now
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={openAuthModal}
+                  className="rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs"
+                >
+                  Sign In / Register
+                </Button>
               </div>
             )}
           </div>
@@ -257,7 +273,7 @@ export const LeaderboardScreen: React.FC<LeaderboardScreenProps> = ({
               Top Percussionists • {CHALLENGES.find((c) => c.id === selectedTrack)?.title} ({entries.length} Players)
             </span>
             <span className="text-[11px] text-zinc-400">
-              Each player displays their highest record score
+              Registered players only • Highest score per account
             </span>
           </CardHeader>
 

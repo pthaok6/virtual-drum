@@ -48,7 +48,7 @@ export const RecordingsScreen: React.FC<RecordingsScreenProps> = ({ onNavigate }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState<string>('');
 
-  const playbackTimerRef = useRef<NodeJS.Timeout[]>([]);
+  const playbackTimerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const animFrameRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 

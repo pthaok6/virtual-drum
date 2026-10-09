@@ -90,10 +90,11 @@ export class SupabaseStorageService implements IStorageService {
     }
 
     try {
-      // Query enough rows to group and deduplicate by account
+      // Query only registered accounts (user_id is not null)
       let query = supabase
         .from('play_records')
         .select('*')
+        .not('user_id', 'is', null)
         .order('score', { ascending: false })
         .order('accuracy', { ascending: false })
         .limit(Math.max(limit * 4, 100));
@@ -113,10 +114,12 @@ export class SupabaseStorageService implements IStorageService {
       const bestByAccount = new Map<string, LeaderboardEntry>();
 
       for (const item of data) {
-        const accountKey =
-          item.user_id && !String(item.user_id).startsWith('guest-')
-            ? String(item.user_id)
-            : String(item.username).trim().toLowerCase();
+        // Exclude guest or unauthenticated records completely from leaderboard
+        if (!item.user_id || String(item.user_id).startsWith('guest-')) {
+          continue;
+        }
+
+        const accountKey = String(item.user_id);
 
         const entry: LeaderboardEntry = {
           id: item.id,

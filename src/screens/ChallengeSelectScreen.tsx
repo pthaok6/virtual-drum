@@ -18,7 +18,7 @@ export const ChallengeSelectScreen: React.FC<ChallengeSelectScreenProps> = ({
 }) => {
   const [selectedId, setSelectedId] = useState<string>(CHALLENGES[0].id);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
-  const previewTimerRef = useRef<NodeJS.Timeout[]>([]);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const [difficultyFilter, setDifficultyFilter] = useState<'All' | 'Easy' | 'Medium' | 'Hard' | 'Expert'>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');

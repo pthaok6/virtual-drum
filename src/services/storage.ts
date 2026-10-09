@@ -14,14 +14,21 @@ const STORAGE_KEYS = {
   PERSONAL_BESTS: 'v_drum_personal_bests',
 };
 
-// Realistic seed data for the global leaderboard (cleared for testing)
-const SEED_RECORDS: PlayRecord[] = [];
-
 export { calculateUserLevel, generateDefaultAvatar } from './authUtils';
 import { calculateUserLevel, generateDefaultAvatar } from './authUtils';
 import { getSupabaseConfig } from './supabase';
 import { SupabaseAuthAdapter } from './supabaseAuth';
 import { SupabaseStorageService } from './supabaseStorage';
+
+export function isUserAdmin(user: UserProfile | null | undefined): boolean {
+  if (!user) return false;
+  return (
+    user.role === 'admin' ||
+    user.username.toLowerCase() === 'admin' ||
+    user.email.toLowerCase().startsWith('admin@') ||
+    user.email.toLowerCase() === 'admin'
+  );
+}
 
 /**
  * LocalStorage implementation of IAuthAdapter
@@ -42,6 +49,8 @@ export class LocalStorageAuthAdapter implements IAuthAdapter {
     const users = this.getAllUsers();
     let user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 
+    const isAdmin = email.toLowerCase().startsWith('admin@') || email.toLowerCase() === 'admin';
+
     if (!user) {
       const username = email.split('@')[0] || 'Drummer';
       user = {
@@ -52,9 +61,12 @@ export class LocalStorageAuthAdapter implements IAuthAdapter {
         level: 1,
         totalScore: 0,
         createdAt: Date.now(),
+        role: isAdmin || username.toLowerCase() === 'admin' ? 'admin' : 'user',
       };
       users.push(user);
       localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    } else if (isAdmin || user.username.toLowerCase() === 'admin') {
+      user.role = 'admin';
     }
 
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
@@ -64,8 +76,10 @@ export class LocalStorageAuthAdapter implements IAuthAdapter {
   public async register(email: string, username: string, _password: string): Promise<UserProfile> {
     const users = this.getAllUsers();
     const existing = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    const isAdmin = username.toLowerCase() === 'admin' || email.toLowerCase().startsWith('admin@') || email.toLowerCase() === 'admin';
+
     if (existing) {
-      // Log in existing
+      if (isAdmin) existing.role = 'admin';
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(existing));
       return existing;
     }
@@ -78,6 +92,7 @@ export class LocalStorageAuthAdapter implements IAuthAdapter {
       level: 1,
       totalScore: 0,
       createdAt: Date.now(),
+      role: isAdmin ? 'admin' : 'user',
     };
 
     users.push(newUser);
@@ -215,14 +230,15 @@ export class LocalStorageService implements IStorageService {
       filtered = records.filter((r) => r.trackId === trackId);
     }
 
-    // Deduplicate so each account only appears once with their highest score achieved
+    // Deduplicate so each registered account only appears once with their highest score achieved
     const bestByAccount = new Map<string, PlayRecord>();
     for (const record of filtered) {
-      // Use unique account key: userId for registered accounts, or username for guest
-      const accountKey =
-        record.userId && !record.userId.startsWith('guest-')
-          ? record.userId
-          : record.username.trim().toLowerCase();
+      // Exclude guests: only registered users can appear on leaderboard
+      if (!record.userId || record.userId.startsWith('guest')) {
+        continue;
+      }
+
+      const accountKey = record.userId;
 
       const existing = bestByAccount.get(accountKey);
       if (!existing) {
@@ -274,9 +290,11 @@ export class LocalStorageService implements IStorageService {
   private getAllRecords(): PlayRecord[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PLAY_RECORDS);
-      return data ? JSON.parse(data) : [...SEED_RECORDS];
+      if (!data) return [];
+      const parsed: PlayRecord[] = JSON.parse(data);
+      return parsed.filter((r) => r.userId && !r.userId.startsWith('guest'));
     } catch {
-      return [...SEED_RECORDS];
+      return [];
     }
   }
 }

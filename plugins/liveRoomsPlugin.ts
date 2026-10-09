@@ -71,36 +71,8 @@ function sendJson(res: ServerResponse, status: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
-const DEFAULT_SEED_ROOM: LiveRoom = {
-  id: 'room-acoustic-lounge',
-  name: 'Acoustic Groove Lounge 🥁',
-  description: 'Acoustic jam lounge to share beats, talk, and perform freely.',
-  genre: 'Acoustic',
-  ownerId: 'host-system',
-  ownerName: 'Groove Master (Bot Host)',
-  ownerAvatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
-  maxMembers: 8,
-  isLocked: false,
-  members: [
-    {
-      id: 'host-system',
-      username: 'Groove Master (Bot Host)',
-      avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
-      level: 10,
-      role: 'owner',
-      isMuted: false,
-      isCameraOn: false,
-      isScreenSharing: false,
-      joinedAt: Date.now() - 3600000,
-    },
-  ],
-  activeScreenShareUser: null,
-  createdAt: Date.now() - 3600000,
-  updatedAt: Date.now(),
-};
-
 export function liveRoomsPlugin(): Plugin {
-  const rooms: LiveRoom[] = [JSON.parse(JSON.stringify(DEFAULT_SEED_ROOM))];
+  const rooms: LiveRoom[] = [];
   const roomMessages: Map<string, RoomChatMessage[]> = new Map();
   const sseClients: Set<ServerResponse> = new Set();
 
@@ -278,8 +250,8 @@ export function liveRoomsPlugin(): Plugin {
             targetRoom.activeScreenShareUser = null;
           }
 
-          // If no members left and not seed room, delete room
-          if (targetRoom.members.length === 0 && !targetRoom.id.startsWith('room-acoustic-lounge')) {
+          // If no members left, delete room
+          if (targetRoom.members.length === 0) {
             const index = rooms.findIndex((r) => r.id === targetId);
             if (index >= 0) rooms.splice(index, 1);
             roomMessages.delete(targetId);

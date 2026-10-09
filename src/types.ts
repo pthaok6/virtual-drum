@@ -122,6 +122,7 @@ export interface UserProfile {
   level: number;
   totalScore: number;
   createdAt: number;
+  role?: 'admin' | 'user';
 }
 
 export interface PlayRecord {

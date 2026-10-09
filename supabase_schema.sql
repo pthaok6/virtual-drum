@@ -95,15 +95,19 @@ create table if not exists public.play_records (
 -- Kích hoạt Row Level Security cho play_records
 alter table public.play_records enable row level security;
 
--- Policy: Mọi người có thể xem toàn bộ bảng xếp hạng
+-- Policy: Chỉ hiển thị bảng xếp hạng của các tài khoản đã đăng ký (user_id IS NOT NULL)
 drop policy if exists "Leaderboard is viewable by everyone" on public.play_records;
 create policy "Leaderboard is viewable by everyone" on public.play_records
-  for select using (true);
+  for select using (user_id is not null);
 
--- Policy: Bất kỳ ai (đã đăng nhập hoặc khách) đều có thể ghi điểm
+-- Policy: Bắt buộc người dùng phải đăng nhập tài khoản mới được ghi điểm lên bảng xếp hạng
 drop policy if exists "Anyone can insert play records" on public.play_records;
-create policy "Anyone can insert play records" on public.play_records
-  for insert with check (true);
+drop policy if exists "Authenticated users can insert play records" on public.play_records;
+create policy "Authenticated users can insert play records" on public.play_records
+  for insert with check (auth.uid() is not null and auth.uid() = user_id);
+
+-- Dọn dẹp các bản ghi điểm của tài khoản khách (chạy trong Supabase SQL Editor):
+-- DELETE FROM public.play_records WHERE user_id IS NULL;
 
 -- Index tối ưu tốc độ tải Leaderboard
 create index if not exists idx_play_records_track_score on public.play_records (track_id, score desc);

@@ -34,9 +34,6 @@ interface BroadcastPayload {
   targetSenderId?: string;
 }
 
-// Initial demo public room (cleared for testing)
-const SEED_PUBLIC_ROOMS: LiveRoom[] = [];
-
 class RoomService {
   private localChannel: BroadcastChannel | null = null;
   private eventSource: EventSource | null = null;
@@ -67,7 +64,7 @@ class RoomService {
 
   private clearOldRoomsData() {
     try {
-      const resetRoomsKey = 'v_drum_clear_all_rooms_v9_clean';
+      const resetRoomsKey = 'v_drum_clear_all_rooms_v11_nobot';
       if (!localStorage.getItem(resetRoomsKey)) {
         localStorage.removeItem(ROOMS_STORAGE_KEY);
         Object.keys(localStorage).forEach((key) => {
@@ -801,8 +798,8 @@ class RoomService {
       body: JSON.stringify({ userId }),
     }).catch(() => {});
 
-    // If no members left and not seed room, clean up room
-    if (room.members.length === 0 && !room.id.startsWith('room-acoustic-lounge')) {
+    // If no members left, clean up room
+    if (room.members.length === 0) {
       const remaining = rooms.filter((r) => r.id !== roomId);
       this.saveRoomsToLocal(remaining);
       this.clearMessages(roomId);

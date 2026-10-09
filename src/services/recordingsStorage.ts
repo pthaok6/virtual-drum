@@ -41,7 +41,7 @@ export const SEED_RECORDINGS: UserRecording[] = [
   {
     id: 'demo-funk-pocket',
     title: 'Funky Pocket Jam',
-    authorName: 'Groove Master',
+    authorName: 'Rhythm Master',
     preset: 'acoustic',
     bpm: 115,
     durationMs: 4200,

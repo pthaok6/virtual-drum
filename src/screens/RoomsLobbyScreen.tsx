@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LiveRoom, ScreenType } from '../types';
 import { roomService } from '../services/roomService';
 import { useAuth } from '../context/AuthContext';
+import { isUserAdmin } from '../services/storage';
 import {
   Users,
   Radio,
@@ -54,6 +55,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
   onJoinRoom,
 }) => {
   const { user, isAuthenticated, openAuthModal } = useAuth();
+  const isAdmin = isUserAdmin(user);
   const [rooms, setRooms] = useState<LiveRoom[]>(() => roomService.getRooms());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('All');
@@ -110,6 +112,10 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
   };
 
   const handleClearAllRooms = async () => {
+    if (!isAdmin) {
+      alert('Permission denied. Only administrator accounts can clear all rooms.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to clear all active rooms to reset test data?')) {
       return;
     }
@@ -121,9 +127,19 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
     }, 400);
   };
 
-  const handleDeleteRoom = async (e: React.MouseEvent, roomId: string) => {
+  const handleDeleteRoom = async (
+    e: React.MouseEvent,
+    roomId: string,
+    roomName: string,
+    roomOwnerId: string
+  ) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this room?')) return;
+    const canDelete = isAdmin || (user && user.id === roomOwnerId);
+    if (!canDelete) {
+      alert('You can only delete rooms that you created.');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete room "${roomName}"?`)) return;
     await roomService.deleteRoom(roomId);
     setRooms((prev) => prev.filter((r) => r.id !== roomId));
   };
@@ -330,19 +346,22 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
             <span className="hidden sm:inline">Refresh</span>
           </Button>
 
-          <Button
-            id="clear-all-rooms-btn"
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleClearAllRooms}
-            disabled={isClearing}
-            title="Clear all rooms (Reset for testing)"
-            className="rounded-xl border-zinc-800 bg-zinc-900/90 hover:bg-rose-950/40 hover:border-rose-900/50 text-zinc-400 hover:text-rose-400 text-xs px-3 py-2 flex items-center gap-1.5 shrink-0 cursor-pointer"
-          >
-            <Trash2 className={`h-3.5 w-3.5 ${isClearing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Clear All</span>
-          </Button>
+          {/* Admin only: Clear all rooms */}
+          {isAdmin && (
+            <Button
+              id="clear-all-rooms-btn"
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleClearAllRooms}
+              disabled={isClearing}
+              title="Admin: Clear all rooms"
+              className="rounded-xl border-zinc-800 bg-zinc-900/90 hover:bg-rose-950/40 hover:border-rose-900/50 text-zinc-400 hover:text-rose-400 text-xs px-3 py-2 flex items-center gap-1.5 shrink-0 cursor-pointer"
+            >
+              <Trash2 className={`h-3.5 w-3.5 ${isClearing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Clear All (Admin)</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -445,14 +464,14 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Delete room button (for room owner or host-system) */}
-                    {(isUserOwner || room.ownerId === 'host-system') && (
+                    {/* Delete room button: ONLY room owner can delete their own room, OR admin can delete any room */}
+                    {(isUserOwner || isAdmin) && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={(e) => handleDeleteRoom(e, room.id)}
-                        title="Delete room"
+                        onClick={(e) => handleDeleteRoom(e, room.id, roomName, room.ownerId)}
+                        title={isUserOwner ? 'Delete your room' : 'Admin: Delete room'}
                         className="h-8 w-8 rounded-xl text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
