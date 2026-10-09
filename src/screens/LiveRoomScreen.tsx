@@ -93,6 +93,8 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const lastSpeakingStateRef = useRef(false);
+  const lastLevelUpdateRef = useRef(0);
 
   const isOwner = Boolean(user && room && room.ownerId === user.id);
   const currentMember = room?.members.find((m) => m.id === user?.id);
@@ -159,7 +161,7 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
         }
       });
       roomService.fetchMessagesFromServer(roomId);
-    }, 1200);
+    }, 4000);
 
     return () => clearInterval(syncInterval);
   }, [roomId]);
@@ -235,15 +237,23 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
     }
   }, [currentMember?.isMuted]);
 
-  // Audio level meter listener
+  // Audio level meter listener (strictly throttled to eliminate network flooding & lag)
   useEffect(() => {
     const unsubAudio = mediaManager.onAudioLevel((level, isSpeaking) => {
-      setLocalAudioLevel(level);
+      const now = Date.now();
+      if (now - lastLevelUpdateRef.current > 150) {
+        lastLevelUpdateRef.current = now;
+        setLocalAudioLevel(level);
+      }
+
+      // ONLY broadcast network update when speaking state transitions (start or stop talking)
       if (user && isMicOn) {
-        roomService.updateMediaState(roomId, user.id, {
-          isSpeaking,
-          audioLevel: level,
-        });
+        if (lastSpeakingStateRef.current !== isSpeaking) {
+          lastSpeakingStateRef.current = isSpeaking;
+          roomService.updateMediaState(roomId, user.id, {
+            isSpeaking,
+          });
+        }
       }
     });
 
@@ -287,8 +297,16 @@ export const LiveRoomScreen: React.FC<LiveRoomScreenProps> = ({ roomId, onLeaveR
       }
     };
 
+    const handleUserInteraction = () => {
+      webrtcManager.resumeAllAudio();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('click', handleUserInteraction);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('click', handleUserInteraction);
+    };
   }, [user, roomId]);
 
   // Clean up media on unmount

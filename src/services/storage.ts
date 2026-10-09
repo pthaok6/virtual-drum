@@ -14,74 +14,8 @@ const STORAGE_KEYS = {
   PERSONAL_BESTS: 'v_drum_personal_bests',
 };
 
-// Realistic seed data for the global leaderboard
-const SEED_RECORDS: PlayRecord[] = [
-  {
-    id: 'rec-seed-1',
-    userId: 'seed-u1',
-    username: 'NeonPulse99',
-    avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=NeonPulse',
-    trackId: 'fast-beat',
-    trackTitle: 'Fast Beat',
-    score: 18450,
-    accuracy: 98.4,
-    maxCombo: 80,
-    rank: 'S',
-    timestamp: Date.now() - 1000 * 60 * 60 * 5,
-  },
-  {
-    id: 'rec-seed-2',
-    userId: 'seed-u2',
-    username: 'GrooveMaster',
-    avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
-    trackId: 'funky-groove',
-    trackTitle: 'Funky Groove',
-    score: 15200,
-    accuracy: 96.8,
-    maxCombo: 64,
-    rank: 'S',
-    timestamp: Date.now() - 1000 * 60 * 60 * 12,
-  },
-  {
-    id: 'rec-seed-3',
-    userId: 'seed-u3',
-    username: 'RockStarAlex',
-    avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Alex',
-    trackId: 'basic-rock',
-    trackTitle: 'Basic Rock',
-    score: 13800,
-    accuracy: 94.2,
-    maxCombo: 56,
-    rank: 'A',
-    timestamp: Date.now() - 1000 * 60 * 60 * 24,
-  },
-  {
-    id: 'rec-seed-4',
-    userId: 'seed-u4',
-    username: 'AcousticSoul',
-    avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Soul',
-    trackId: 'beginner-beat',
-    trackTitle: 'Beginner Beat',
-    score: 7200,
-    accuracy: 100.0,
-    maxCombo: 24,
-    rank: 'S',
-    timestamp: Date.now() - 1000 * 60 * 60 * 36,
-  },
-  {
-    id: 'rec-seed-5',
-    userId: 'seed-u5',
-    username: 'CyberPercussion',
-    avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Cyber',
-    trackId: 'fast-beat',
-    trackTitle: 'Fast Beat',
-    score: 16100,
-    accuracy: 92.5,
-    maxCombo: 68,
-    rank: 'A',
-    timestamp: Date.now() - 1000 * 60 * 60 * 48,
-  },
-];
+// Realistic seed data for the global leaderboard (cleared for testing)
+const SEED_RECORDS: PlayRecord[] = [];
 
 export { calculateUserLevel, generateDefaultAvatar } from './authUtils';
 import { calculateUserLevel, generateDefaultAvatar } from './authUtils';
@@ -195,18 +129,35 @@ export class LocalStorageAuthAdapter implements IAuthAdapter {
  */
 export class LocalStorageService implements IStorageService {
   constructor() {
-    this.seedInitialDataIfNeeded();
+    this.clearOldLeaderboardData();
   }
 
-  private seedInitialDataIfNeeded() {
+  private clearOldLeaderboardData() {
     try {
-      const existing = localStorage.getItem(STORAGE_KEYS.PLAY_RECORDS);
-      if (!existing) {
-        localStorage.setItem(STORAGE_KEYS.PLAY_RECORDS, JSON.stringify(SEED_RECORDS));
+      const resetLeaderboardKey = 'v_drum_clear_all_leaderboard_v2';
+      if (!localStorage.getItem(resetLeaderboardKey)) {
+        localStorage.setItem(STORAGE_KEYS.PLAY_RECORDS, JSON.stringify([]));
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith(STORAGE_KEYS.PERSONAL_BESTS)) {
+            localStorage.removeItem(key);
+          }
+        });
+        localStorage.setItem(resetLeaderboardKey, 'true');
       }
     } catch (e) {
-      console.warn('Could not seed local storage:', e);
+      console.warn('Could not reset leaderboard data:', e);
     }
+  }
+
+  public clearLeaderboard(): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PLAY_RECORDS, JSON.stringify([]));
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith(STORAGE_KEYS.PERSONAL_BESTS)) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch {}
   }
 
   public async savePlayRecord(recordData: Omit<PlayRecord, 'id' | 'timestamp'>): Promise<PlayRecord> {

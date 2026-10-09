@@ -34,36 +34,8 @@ interface BroadcastPayload {
   targetSenderId?: string;
 }
 
-// Initial demo public room so lobby is alive immediately
-const SEED_PUBLIC_ROOMS: LiveRoom[] = [
-  {
-    id: 'room-acoustic-lounge',
-    name: 'Acoustic Groove Lounge 🥁',
-    description: 'Acoustic jam lounge to share beats, talk, and perform freely.',
-    genre: 'Acoustic',
-    ownerId: 'host-system',
-    ownerName: 'Groove Master (Bot Host)',
-    ownerAvatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
-    maxMembers: 8,
-    isLocked: false,
-    members: [
-      {
-        id: 'host-system',
-        username: 'Groove Master (Bot Host)',
-        avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
-        level: 10,
-        role: 'owner',
-        isMuted: false,
-        isCameraOn: false,
-        isScreenSharing: false,
-        joinedAt: Date.now() - 3600000,
-      },
-    ],
-    activeScreenShareUser: null,
-    createdAt: Date.now() - 3600000,
-    updatedAt: Date.now(),
-  },
-];
+// Initial demo public room (cleared for testing)
+const SEED_PUBLIC_ROOMS: LiveRoom[] = [];
 
 class RoomService {
   private localChannel: BroadcastChannel | null = null;
@@ -85,11 +57,27 @@ class RoomService {
   private signalListeners: Set<(payload: any) => void> = new Set();
 
   constructor() {
+    this.clearOldRoomsData();
     this.initBroadcastChannel();
     this.initStorageListener();
     this.initServerSync();
     this.initSupabaseRealtime();
     this.fetchRoomsFromServer();
+  }
+
+  private clearOldRoomsData() {
+    try {
+      const resetRoomsKey = 'v_drum_clear_all_rooms_v9_clean';
+      if (!localStorage.getItem(resetRoomsKey)) {
+        localStorage.removeItem(ROOMS_STORAGE_KEY);
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith(MESSAGES_STORAGE_PREFIX)) {
+            localStorage.removeItem(key);
+          }
+        });
+        localStorage.setItem(resetRoomsKey, 'true');
+      }
+    } catch {}
   }
 
   // ================= 1. SERVER SSE SYNC (ZERO DELAY ACROSS BROWSERS) =================
@@ -229,7 +217,7 @@ class RoomService {
       const res = await fetch('/api/live-rooms', { cache: 'no-store' });
       if (res.ok) {
         const remoteRooms = await res.json();
-        if (Array.isArray(remoteRooms) && remoteRooms.length > 0) {
+        if (Array.isArray(remoteRooms)) {
           this.setRoomsFromRemote(remoteRooms);
           return this.getRooms();
         }
@@ -308,30 +296,17 @@ class RoomService {
 
   private setRoomsFromRemote(incomingRooms: LiveRoom[]) {
     if (!Array.isArray(incomingRooms)) return;
-    const localRooms = this.getRooms();
-    const map = new Map<string, LiveRoom>();
 
-    localRooms.forEach((r) => {
-      const san = this.sanitizeRoom(r);
-      if (san) map.set(san.id, san);
-    });
+    // Remote rooms from server are authoritative across browsers
+    const sanitizedList = incomingRooms
+      .map((r) => this.sanitizeRoom(r))
+      .filter((r): r is LiveRoom => r !== null);
 
-    // Remote rooms from server are authoritative
-    incomingRooms.forEach((r) => {
-      const san = this.sanitizeRoom(r);
-      if (san) {
-        map.set(san.id, san);
-      }
-    });
-
-    const combined = Array.from(map.values());
-    if (combined.length === 0) {
-      combined.push(...SEED_PUBLIC_ROOMS);
-    }
-    this.saveRoomsToLocal(combined);
-    this.notifyRoomsUpdated(combined);
+    this.saveRoomsToLocal(sanitizedList);
+    this.notifyRoomsUpdated(sanitizedList);
 
     // Also notify any single active room listeners with updated member data
+    const map = new Map(sanitizedList.map((r) => [r.id, r]));
     this.singleRoomListeners.forEach((listeners, roomId) => {
       const current = map.get(roomId) || null;
       const msgs = this.getMessages(roomId);
@@ -431,45 +406,13 @@ class RoomService {
   }
 
   private handlePresenceSync() {
-    if (!this.supabaseChannel) return;
-    try {
-      const state = this.supabaseChannel.presenceState();
-      let changed = false;
-
-      for (const key in state) {
-        const presences = state[key] as Array<{ room?: LiveRoom }>;
-        if (Array.isArray(presences)) {
-          presences.forEach((p) => {
-            if (p.room && p.room.id) {
-              if (this.mergeRoom(p.room)) {
-                changed = true;
-              }
-            }
-          });
-        }
-      }
-
-      if (changed) {
-        this.notifyRoomsUpdated(this.getRooms());
-      }
-    } catch (err) {
-      console.warn('handlePresenceSync error:', err);
-    }
+    // Realtime presence tracks peer connectivity & speaking indicators;
+    // Room list lifecycle is authoritatively managed by server relay and SSE
   }
 
-  private handlePresenceJoin(newPresences: Array<{ room?: LiveRoom }>) {
-    if (!Array.isArray(newPresences)) return;
-    let changed = false;
-    newPresences.forEach((p) => {
-      if (p.room && p.room.id) {
-        if (this.mergeRoom(p.room)) {
-          changed = true;
-        }
-      }
-    });
-    if (changed) {
-      this.notifyRoomsUpdated(this.getRooms());
-    }
+  private handlePresenceJoin(_newPresences: Array<{ room?: LiveRoom }>) {
+    // Realtime presence tracks peer connectivity & speaking indicators;
+    // Room list lifecycle is authoritatively managed by server relay and SSE
   }
 
   private handlePresenceLeave(_leftPresences: Array<{ room?: LiveRoom }>) {
@@ -554,41 +497,26 @@ class RoomService {
 
     switch (payload.type) {
       case 'SYNC_REQUEST': {
-        if (payload.senderId && payload.senderId !== this.clientSessionId) {
-          const currentRooms = this.getRooms();
-          this.broadcast({
-            type: 'SYNC_RESPONSE',
-            senderId: this.clientSessionId,
-            targetSenderId: payload.senderId,
-            rooms: currentRooms,
-          });
-        }
+        this.fetchRoomsFromServer();
         break;
       }
 
       case 'SYNC_RESPONSE': {
         if (!payload.targetSenderId || payload.targetSenderId === this.clientSessionId) {
           if (Array.isArray(payload.rooms)) {
-            let changed = false;
-            payload.rooms.forEach((r) => {
-              if (this.mergeRoom(r)) changed = true;
-            });
-            if (changed) {
-              this.notifyRoomsUpdated(this.getRooms());
-            }
+            this.setRoomsFromRemote(payload.rooms);
           }
         }
         break;
       }
 
       case 'ROOMS_UPDATED': {
-        if (payload.room) {
-          this.mergeRoom(payload.room);
-        }
         if (Array.isArray(payload.rooms)) {
-          payload.rooms.forEach((r) => this.mergeRoom(r));
+          this.setRoomsFromRemote(payload.rooms);
+        } else if (payload.room) {
+          this.mergeRoom(payload.room);
+          this.notifyRoomsUpdated(this.getRooms());
         }
-        this.notifyRoomsUpdated(this.getRooms());
         break;
       }
 
@@ -671,25 +599,49 @@ class RoomService {
     try {
       const raw = localStorage.getItem(ROOMS_STORAGE_KEY);
       if (!raw) {
-        this.saveRoomsToLocal(SEED_PUBLIC_ROOMS);
-        return SEED_PUBLIC_ROOMS;
+        return [];
       }
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed) || parsed.length === 0) {
-        this.saveRoomsToLocal(SEED_PUBLIC_ROOMS);
-        return SEED_PUBLIC_ROOMS;
+        return [];
       }
       const sanitized = parsed
         .map((item) => this.sanitizeRoom(item))
         .filter((r): r is LiveRoom => r !== null);
-      if (sanitized.length === 0) {
-        this.saveRoomsToLocal(SEED_PUBLIC_ROOMS);
-        return SEED_PUBLIC_ROOMS;
-      }
       return sanitized;
     } catch {
-      return SEED_PUBLIC_ROOMS;
+      return [];
     }
+  }
+
+  public async clearAllRooms(): Promise<void> {
+    try {
+      await fetch('/api/live-rooms', { method: 'DELETE' });
+    } catch {}
+    this.saveRoomsToLocal([]);
+    this.notifyRoomsUpdated([]);
+    this.broadcast({ type: 'ROOMS_UPDATED', rooms: [] });
+    this.syncPresence(null, null);
+    this.singleRoomListeners.forEach((listeners, roomId) => {
+      this.clearMessages(roomId);
+      listeners.forEach((cb) => {
+        try {
+          cb(null, []);
+        } catch {}
+      });
+    });
+  }
+
+  public async deleteRoom(roomId: string): Promise<void> {
+    try {
+      await fetch(`/api/live-rooms/${roomId}`, { method: 'DELETE' });
+    } catch {}
+    const remaining = this.getRooms().filter((r) => r.id !== roomId);
+    this.saveRoomsToLocal(remaining);
+    this.clearMessages(roomId);
+    this.broadcast({ type: 'ROOM_ENDED', roomId });
+    this.notifyRoomsUpdated(remaining);
+    this.notifySingleRoomUpdated(roomId, null, []);
   }
 
   public getRoom(roomId: string): LiveRoom | null {
@@ -1131,7 +1083,7 @@ class RoomService {
 
   public sendMessage(
     roomId: string,
-    sender: { id: string; username: string; avatarUrl: string },
+    sender: { id: string; username: string; avatarUrl: string; [key: string]: any },
     content: string,
     type: 'chat' | 'system' | 'reaction' = 'chat'
   ): RoomChatMessage {

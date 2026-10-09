@@ -98,21 +98,18 @@ class WebRTCManager {
     this.localAudioStream = stream;
     const audioTrack = stream ? stream.getAudioTracks()[0] : null;
 
-    this.peers.forEach((peer) => {
+    for (const [peerId, peer] of this.peers.entries()) {
       const senders = peer.getSenders();
-      const audioSender = senders.find((s) => s.track && s.track.kind === 'audio');
+      const audioSender = senders.find((s) => s.track?.kind === 'audio');
       if (audioSender) {
-        if (audioTrack) {
-          audioSender.replaceTrack(audioTrack).catch(() => {});
-        } else {
-          audioSender.replaceTrack(null).catch(() => {});
-        }
+        audioSender.replaceTrack(audioTrack || null).catch(() => {});
       } else if (audioTrack) {
         try {
           peer.addTrack(audioTrack, stream!);
+          this.renegotiatePeer(peerId, peer);
         } catch {}
       }
-    });
+    }
   }
 
   /**
@@ -230,15 +227,34 @@ class WebRTCManager {
     this.notifyRemoteStream(peerId, 'camera', null);
   }
 
+  public resumeAllAudio(): void {
+    this.remoteAudioElements.forEach((audio) => {
+      if (audio.paused) {
+        audio.play().catch(() => {});
+      }
+    });
+  }
+
   private createPeerConnection(peerId: string): RTCPeerConnection {
     const peer = new RTCPeerConnection(RTC_CONFIG);
     this.peers.set(peerId, peer);
+
+    // Initialize audio and video transceivers upfront so SDP contains m-lines
+    try {
+      peer.addTransceiver('audio', { direction: 'sendrecv' });
+      peer.addTransceiver('video', { direction: 'sendrecv' });
+    } catch {}
 
     // Add local tracks if available
     if (this.localAudioStream) {
       this.localAudioStream.getAudioTracks().forEach((track) => {
         try {
-          peer.addTrack(track, this.localAudioStream!);
+          const sender = peer.getSenders().find((s) => s.track?.kind === 'audio');
+          if (sender) {
+            sender.replaceTrack(track).catch(() => {});
+          } else {
+            peer.addTrack(track, this.localAudioStream!);
+          }
         } catch {}
       });
     }
@@ -246,13 +262,23 @@ class WebRTCManager {
     if (this.localScreenStream) {
       this.localScreenStream.getVideoTracks().forEach((track) => {
         try {
-          peer.addTrack(track, this.localScreenStream!);
+          const sender = peer.getSenders().find((s) => s.track?.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(track).catch(() => {});
+          } else {
+            peer.addTrack(track, this.localScreenStream!);
+          }
         } catch {}
       });
     } else if (this.localCameraStream) {
       this.localCameraStream.getVideoTracks().forEach((track) => {
         try {
-          peer.addTrack(track, this.localCameraStream!);
+          const sender = peer.getSenders().find((s) => s.track?.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(track).catch(() => {});
+          } else {
+            peer.addTrack(track, this.localCameraStream!);
+          }
         } catch {}
       });
     }
@@ -277,12 +303,16 @@ class WebRTCManager {
         if (!audioEl) {
           audioEl = document.createElement('audio');
           audioEl.autoplay = true;
+          audioEl.muted = false;
+          audioEl.volume = 1.0;
           audioEl.style.display = 'none';
           document.body.appendChild(audioEl);
           this.remoteAudioElements.set(peerId, audioEl);
         }
         audioEl.srcObject = stream;
-        audioEl.play().catch(() => {});
+        audioEl.play().catch((err) => {
+          console.warn(`Autoplay audio for ${peerId} requires interaction:`, err);
+        });
         this.notifyRemoteStream(peerId, 'audio', stream);
       } else if (event.track.kind === 'video') {
         // Video can be screen share or camera

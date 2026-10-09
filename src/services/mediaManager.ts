@@ -9,7 +9,7 @@ class MediaManager {
 
   private audioCtx: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
-  private animFrameId: number | null = null;
+  private checkIntervalId: number | null = null;
   private levelCallbacks: Set<MediaLevelCallback> = new Set();
 
   /**
@@ -152,7 +152,7 @@ class MediaManager {
 
       const buffer = new Uint8Array(this.analyser.frequencyBinCount);
 
-      const checkVolume = () => {
+      this.checkIntervalId = window.setInterval(() => {
         if (!this.analyser) return;
         this.analyser.getByteFrequencyData(buffer);
         let sum = 0;
@@ -161,27 +161,23 @@ class MediaManager {
         }
         const avg = sum / buffer.length;
         const normalized = Math.min(100, Math.round((avg / 128) * 100));
-        const isSpeaking = normalized > 12;
+        const isSpeaking = normalized > 14;
 
         this.levelCallbacks.forEach((cb) => {
           try {
             cb(normalized, isSpeaking);
           } catch {}
         });
-
-        this.animFrameId = requestAnimationFrame(checkVolume);
-      };
-
-      this.animFrameId = requestAnimationFrame(checkVolume);
+      }, 100);
     } catch (e) {
       console.warn('Audio analysis not supported in this environment:', e);
     }
   }
 
   private cleanupAudioAnalysis() {
-    if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
-      this.animFrameId = null;
+    if (this.checkIntervalId) {
+      clearInterval(this.checkIntervalId);
+      this.checkIntervalId = null;
     }
     if (this.audioCtx && this.audioCtx.state !== 'closed') {
       try {

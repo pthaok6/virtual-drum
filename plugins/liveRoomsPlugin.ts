@@ -42,33 +42,6 @@ interface RoomChatMessage {
   type: 'chat' | 'system' | 'reaction';
 }
 
-const SEED_ROOM: LiveRoom = {
-  id: 'room-acoustic-lounge',
-  name: 'Acoustic Groove Lounge 🥁',
-  description: 'Acoustic jam lounge to share beats, talk, and perform freely.',
-  genre: 'Acoustic',
-  ownerId: 'host-system',
-  ownerName: 'Groove Master (Bot Host)',
-  ownerAvatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
-  maxMembers: 8,
-  isLocked: false,
-  members: [
-    {
-      id: 'host-system',
-      username: 'Groove Master (Bot Host)',
-      avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
-      level: 10,
-      role: 'owner',
-      isMuted: false,
-      isCameraOn: false,
-      isScreenSharing: false,
-      joinedAt: Date.now() - 3600000,
-    },
-  ],
-  activeScreenShareUser: null,
-  createdAt: Date.now() - 3600000,
-  updatedAt: Date.now(),
-};
 
 function parseJsonBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve) => {
@@ -98,24 +71,38 @@ function sendJson(res: ServerResponse, status: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
+const DEFAULT_SEED_ROOM: LiveRoom = {
+  id: 'room-acoustic-lounge',
+  name: 'Acoustic Groove Lounge 🥁',
+  description: 'Acoustic jam lounge to share beats, talk, and perform freely.',
+  genre: 'Acoustic',
+  ownerId: 'host-system',
+  ownerName: 'Groove Master (Bot Host)',
+  ownerAvatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
+  maxMembers: 8,
+  isLocked: false,
+  members: [
+    {
+      id: 'host-system',
+      username: 'Groove Master (Bot Host)',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
+      level: 10,
+      role: 'owner',
+      isMuted: false,
+      isCameraOn: false,
+      isScreenSharing: false,
+      joinedAt: Date.now() - 3600000,
+    },
+  ],
+  activeScreenShareUser: null,
+  createdAt: Date.now() - 3600000,
+  updatedAt: Date.now(),
+};
+
 export function liveRoomsPlugin(): Plugin {
-  const rooms: LiveRoom[] = [SEED_ROOM];
+  const rooms: LiveRoom[] = [JSON.parse(JSON.stringify(DEFAULT_SEED_ROOM))];
   const roomMessages: Map<string, RoomChatMessage[]> = new Map();
   const sseClients: Set<ServerResponse> = new Set();
-
-  // Initial welcome message for seed room
-  roomMessages.set(SEED_ROOM.id, [
-    {
-      id: 'msg-seed-1',
-      roomId: SEED_ROOM.id,
-      senderId: 'host-system',
-      senderName: 'Groove Master (Bot Host)',
-      senderAvatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=GrooveMaster',
-      content: 'Welcome to the Acoustic Groove Lounge! Turn on your mic and hit the drums.',
-      timestamp: Date.now() - 3600000,
-      type: 'system',
-    },
-  ]);
 
   function broadcastEvent(event: { type: string; [key: string]: any }) {
     const payload = `data: ${JSON.stringify(event)}\n\n`;
@@ -220,6 +207,17 @@ export function liveRoomsPlugin(): Plugin {
             return sendJson(res, 404, { error: 'Room not found' });
           }
           return sendJson(res, 200, found);
+        }
+
+        // 4b. DELETE /api/live-rooms or POST /api/live-rooms/clear: clear all rooms
+        if (
+          ((url === '/api/live-rooms' || url === '/api/live-rooms/') && req.method === 'DELETE') ||
+          (url === '/api/live-rooms/clear' && req.method === 'POST')
+        ) {
+          rooms.length = 0;
+          roomMessages.clear();
+          broadcastEvent({ type: 'ROOMS_UPDATED', rooms: [] });
+          return sendJson(res, 200, { success: true, message: 'All rooms cleared', rooms: [] });
         }
 
         // 5. DELETE /api/live-rooms/:roomId (end room)

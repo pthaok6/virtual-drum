@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Mic,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -57,6 +58,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   // Create room modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -68,7 +70,9 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
 
   useEffect(() => {
     // Initial fetch from server and sync
-    roomService.fetchRoomsFromServer();
+    roomService.fetchRoomsFromServer().then((remoteRooms) => {
+      setRooms(remoteRooms);
+    });
     roomService.requestSync();
 
     const unsub = roomService.subscribeRooms((updatedRooms) => {
@@ -79,7 +83,7 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
     const syncInterval = setInterval(() => {
       roomService.fetchRoomsFromServer();
       roomService.requestSync();
-    }, 1500);
+    }, 4000);
 
     // Instant sync when switching back to this browser window / tab
     const handleFocus = () => {
@@ -97,11 +101,31 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
 
   const handleRefresh = async () => {
     setIsSyncing(true);
-    await roomService.fetchRoomsFromServer();
+    const updated = await roomService.fetchRoomsFromServer();
+    setRooms(updated);
     roomService.requestSync();
     setTimeout(() => {
       setIsSyncing(false);
     }, 400);
+  };
+
+  const handleClearAllRooms = async () => {
+    if (!window.confirm('Are you sure you want to clear all active rooms to reset test data?')) {
+      return;
+    }
+    setIsClearing(true);
+    await roomService.clearAllRooms();
+    setRooms([]);
+    setTimeout(() => {
+      setIsClearing(false);
+    }, 400);
+  };
+
+  const handleDeleteRoom = async (e: React.MouseEvent, roomId: string) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this room?')) return;
+    await roomService.deleteRoom(roomId);
+    setRooms((prev) => prev.filter((r) => r.id !== roomId));
   };
 
   const handleOpenCreateModal = () => {
@@ -300,10 +324,24 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
             size="sm"
             onClick={handleRefresh}
             title="Refresh realtime room list"
-            className="rounded-xl border-zinc-800 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs px-3 py-2 flex items-center gap-1.5 shrink-0"
+            className="rounded-xl border-zinc-800 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs px-3 py-2 flex items-center gap-1.5 shrink-0 cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin text-rose-400' : 'text-zinc-400'}`} />
             <span className="hidden sm:inline">Refresh</span>
+          </Button>
+
+          <Button
+            id="clear-all-rooms-btn"
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleClearAllRooms}
+            disabled={isClearing}
+            title="Clear all rooms (Reset for testing)"
+            className="rounded-xl border-zinc-800 bg-zinc-900/90 hover:bg-rose-950/40 hover:border-rose-900/50 text-zinc-400 hover:text-rose-400 text-xs px-3 py-2 flex items-center gap-1.5 shrink-0 cursor-pointer"
+          >
+            <Trash2 className={`h-3.5 w-3.5 ${isClearing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Clear All</span>
           </Button>
         </div>
       </div>
@@ -406,24 +444,40 @@ export const RoomsLobbyScreen: React.FC<RoomsLobbyScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* Join Button */}
-                  <Button
-                    id={`join-room-btn-${room.id}`}
-                    type="button"
-                    size="sm"
-                    onClick={() => handleJoinClick(room)}
-                    disabled={isFull && !isUserInRoom}
-                    className={`rounded-xl text-xs font-bold px-4 py-2 shrink-0 transition-all cursor-pointer ${
-                      isUserInRoom
-                        ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20'
-                        : isFull
-                        ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                        : 'bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/20 group-hover:translate-x-0.5'
-                    }`}
-                  >
-                    <span>{isUserInRoom ? 'Continue' : isFull ? 'Full' : 'Join'}</span>
-                    <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {/* Delete room button (for room owner or host-system) */}
+                    {(isUserOwner || room.ownerId === 'host-system') && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => handleDeleteRoom(e, room.id)}
+                        title="Delete room"
+                        className="h-8 w-8 rounded-xl text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+
+                    {/* Join Button */}
+                    <Button
+                      id={`join-room-btn-${room.id}`}
+                      type="button"
+                      size="sm"
+                      onClick={() => handleJoinClick(room)}
+                      disabled={isFull && !isUserInRoom}
+                      className={`rounded-xl text-xs font-bold px-4 py-2 shrink-0 transition-all cursor-pointer ${
+                        isUserInRoom
+                          ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950 shadow-md shadow-amber-500/20'
+                          : isFull
+                          ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                          : 'bg-rose-500 hover:bg-rose-600 text-white shadow-md shadow-rose-500/20 group-hover:translate-x-0.5'
+                      }`}
+                    >
+                      <span>{isUserInRoom ? 'Continue' : isFull ? 'Full' : 'Join'}</span>
+                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    </Button>
+                  </div>
                 </div>
               </Card>
             );
