@@ -24,6 +24,8 @@ export interface ReplayClip {
   date: string;
   shared: boolean;
   events: NonNullable<GameResult['replayEvents']>;
+  roomName?: string;
+  roomMode?: 'versus' | 'together';
 }
 
 export const USERS: CommunityUser[] = [

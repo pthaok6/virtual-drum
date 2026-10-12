@@ -22,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 interface ResultScreenProps {
   result: GameResult;
+  roomSession?: { roomName: string; mode: 'versus' | 'together' } | null;
   onPlayAgain: () => void;
   onChooseAnother: () => void;
   onBackToHome: () => void;
@@ -31,6 +32,7 @@ interface ResultScreenProps {
 
 export const ResultScreen: React.FC<ResultScreenProps> = ({
   result,
+  roomSession,
   onPlayAgain,
   onChooseAnother,
   onBackToHome,
@@ -103,13 +105,13 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       {/* Trophy Badge */}
       <Badge variant="outline" className="mb-4 h-auto gap-2 border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-xs font-semibold text-amber-400">
         <Trophy className="h-4 w-4" />
-        <span>{t("Rhythm Challenge Finished")}</span>
+        <span>{t(roomSession ? "Room session complete" : "Rhythm Challenge Finished")}</span>
       </Badge>
 
       {/* Header */}
-      <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase text-center mb-1"> {t("Challenge Complete")} </h1>
+      <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase text-center mb-1"> {t(roomSession ? "Room session complete" : "Challenge Complete")} </h1>
       <p className="text-sm text-zinc-400 font-medium mb-6">
-        {t(result.challenge.title)} • {result.challenge.bpm} BPM
+        {roomSession ? <>{roomSession.roomName} · {t(roomSession.mode === 'versus' ? 'Room challenge match' : 'Play together')} · {t(result.challenge.title)}</> : <>{t(result.challenge.title)} · {result.challenge.bpm} BPM</>}
       </p>
 
       {/* Main Score & Rank Card */}

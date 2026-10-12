@@ -35,7 +35,7 @@ export function createResultImage(clip: ReplayClip, playerName: string, language
   ctx.fillText('VIRTUAL DRUM', 72, 105);
   ctx.fillStyle = '#a1a1aa';
   ctx.font = '26px Arial, sans-serif';
-  ctx.fillText(t('RHYTHM CHALLENGE RESULTS'), 72, 162);
+  ctx.fillText(t(clip.roomMode ? 'ROOM SESSION RESULTS' : 'RHYTHM CHALLENGE RESULTS'), 72, 162);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 56px Arial, sans-serif';
@@ -44,7 +44,10 @@ export function createResultImage(clip: ReplayClip, playerName: string, language
   ctx.fillText(title, 72, 270);
   ctx.fillStyle = '#a1a1aa';
   ctx.font = '30px Arial, sans-serif';
-  ctx.fillText(`${playerName}  •  ${t(challenges.find((challenge) => challenge.id === clip.challengeId)?.title ?? 'Challenge')}`, 72, 326);
+  const context = clip.roomMode
+    ? `${clip.roomName ?? t('Room')}  •  ${t(clip.roomMode === 'versus' ? 'Challenge match' : 'Play together')}`
+    : t(challenges.find((challenge) => challenge.id === clip.challengeId)?.title ?? 'Challenge');
+  ctx.fillText(`${playerName}  •  ${context}`, 72, 326);
 
   ctx.fillStyle = '#27272a';
   roundRect(ctx, 72, 386, 936, 410, 36);

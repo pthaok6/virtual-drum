@@ -41,6 +41,7 @@ export default function App() {
   const location = useLocation();
   const [selectedChallenge, setSelectedChallenge] = useState<RhythmChallenge>(CHALLENGES[0]);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
+  const [roomSession, setRoomSession] = useState<{ roomName: string; mode: 'versus' | 'together' } | null>(null);
   const [latestClipId, setLatestClipId] = useState<string | null>(null);
   const [shareImageClipId, setShareImageClipId] = useState<string | null>(null);
   const [createdClips, setCreatedClips] = useState<ReplayClip[]>(() => readStored('virtual-drum-clips', []));
@@ -64,12 +65,15 @@ export default function App() {
     if (nextLanguage) setLanguage(nextLanguage);
     setSettings((previous) => ({ ...previous, ...partial }));
   };
-  const handleNavigate = (screen: ScreenType) => navigate(paths[screen]);
+  const handleNavigate = (screen: ScreenType) => {
+    if (screen === 'challenge-select') setRoomSession(null);
+    navigate(paths[screen]);
+  };
   const handleFinishGame = (result: GameResult) => {
     const id = `local-${Date.now()}`;
     setGameResult(result);
     setLatestClipId(id);
-    setCreatedClips((previous) => [{ id, userId: 'you', title: result.challenge.title, generatedTitle: true, challengeId: result.challenge.id, score: result.score, accuracy: result.accuracy, rank: result.rank, date: new Date().toISOString(), shared: false, events: result.replayEvents ?? [] }, ...previous]);
+    setCreatedClips((previous) => [{ id, userId: 'you', title: result.challenge.title, generatedTitle: true, challengeId: result.challenge.id, score: result.score, accuracy: result.accuracy, rank: result.rank, date: new Date().toISOString(), shared: false, events: result.replayEvents ?? [], ...(roomSession ? { roomName: roomSession.roomName, roomMode: roomSession.mode } : {}) }, ...previous]);
     navigate('/challenge/result');
   };
   const handleToggleCamera = async () => { if (isCameraActive) { cameraTracker.stop(); handleUpdateSettings({ cameraEnabled: false }); } else { const ok = await cameraTracker.start(undefined, settings.selectedCameraId); handleUpdateSettings({ cameraEnabled: ok }); } };
@@ -85,7 +89,7 @@ export default function App() {
       <Route path="/challenges" element={<ChallengeSelectScreen onViewSong={(id) => navigate('/songs/' + encodeURIComponent(id))} onAddSong={songLibrary.addSong} storageMessage={songLibrary.storageMessage} onNavigate={handleNavigate} onSelectChallenge={setSelectedChallenge} />} />
       <Route path="/songs/:songId" element={<SongDetailScreen onSelectChallenge={setSelectedChallenge} onNavigate={handleNavigate} />} />
       <Route path="/challenge/play" element={selectedChallenge.music ? <SongGameScreen key={selectedChallenge.id} challenge={selectedChallenge} onFinishGame={handleFinishGame} onNavigate={handleNavigate} settings={settings} /> : <RhythmGameScreen key={selectedChallenge.id} challenge={selectedChallenge} onFinishGame={handleFinishGame} onNavigate={handleNavigate} settings={settings} />} />
-      <Route path="/challenge/result" element={gameResult ? <ResultScreen result={gameResult} onPlayAgain={() => navigate('/challenge/play')} onChooseAnother={() => navigate('/challenges')} onBackToHome={() => navigate('/')} onShareImage={() => setShareImageClipId(latestClipId)} onShareProfile={() => navigate(`/share/${latestClipId}`)} /> : <Navigate to="/challenges" replace />} />
+      <Route path="/challenge/result" element={gameResult ? <ResultScreen result={gameResult} roomSession={roomSession} onPlayAgain={() => navigate('/challenge/play')} onChooseAnother={() => { setRoomSession(null); navigate('/challenges'); }} onBackToHome={() => { setRoomSession(null); navigate('/'); }} onShareImage={() => setShareImageClipId(latestClipId)} onShareProfile={() => navigate(`/share/${latestClipId}`)} /> : <Navigate to="/challenges" replace />} />
       <Route path="/login" element={<AuthScreen mode="login" onDemoAuth={() => navigate('/profile/you')} />} />
       <Route path="/register" element={<AuthScreen mode="register" onDemoAuth={() => navigate('/profile/you')} />} />
       <Route path="/profile/:userId" element={<ProfileScreen {...commentActions} clips={clips} following={following} onFollow={handleFollow} onShareImage={setShareImageClipId} />} />
@@ -97,7 +101,7 @@ export default function App() {
       <Route path="/posts/:clipId" element={<PostScreen {...commentActions} clips={clips} onShareImage={setShareImageClipId} />} />
       <Route path="/notifications" element={<NotificationsScreen clips={clips} following={following} />} />
       <Route path="/rooms" element={<RoomsScreen />} />
-      <Route path="/rooms/:roomId" element={<RoomScreen />} />
+      <Route path="/rooms/:roomId" element={<RoomScreen onStartGame={(challenge, session) => { setSelectedChallenge(challenge); setRoomSession(session); navigate('/challenge/play'); }} />} />
       <Route path="*" element={<Missing />} />
     </Routes></main>
     <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onUpdateSettings={handleUpdateSettings} />
