@@ -1,4 +1,5 @@
 import type { CommunityUser } from '../data/community';
+import { createId } from './id';
 
 export interface PostComment { id: string; clipId: string; userId: string; body: string; createdAt: string; parentId?: string }
 export interface DirectMessage { id: string; senderId: string; recipientId: string; body: string; createdAt: string; read: boolean }
@@ -25,7 +26,7 @@ export function conversationMessages(messages: DirectMessage[], userId: string):
 export function createComment(clipId: string, body: string, parentId?: string): PostComment {
   const text = body.trim();
   if (!text || text.length > 1000) throw new Error('Comment must contain 1–1000 characters.');
-  return { id: crypto.randomUUID(), clipId, userId: CURRENT_USER_ID, body: text, createdAt: new Date().toISOString(), ...(parentId ? { parentId } : {}) };
+  return { id: createId(), clipId, userId: CURRENT_USER_ID, body: text, createdAt: new Date().toISOString(), ...(parentId ? { parentId } : {}) };
 }
 export function removeOwnComment(comments: PostComment[], id: string): PostComment[] {
   const target = comments.find(comment => comment.id === id && comment.userId === CURRENT_USER_ID);
@@ -40,7 +41,7 @@ export function createMessage(recipientId: string, body: string): DirectMessage 
   const text = body.trim();
   if (!text || text.length > 2000) throw new Error('Message must contain 1–2000 characters.');
   if (recipientId === CURRENT_USER_ID) throw new Error('Choose another player to message.');
-  return { id: crypto.randomUUID(), senderId: CURRENT_USER_ID, recipientId, body: text, createdAt: new Date().toISOString(), read: true };
+  return { id: createId(), senderId: CURRENT_USER_ID, recipientId, body: text, createdAt: new Date().toISOString(), read: true };
 }
 
 export const DEMO_COMMENTS: PostComment[] = [

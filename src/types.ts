@@ -48,7 +48,7 @@ export interface SongSection {
   id: string; label: string; startMs: number; endMs: number; intensity: 'low' | 'medium' | 'high';
 }
 export interface SongInfo {
-  genre: string; color: string; source: 'recording' | 'original' | 'upload'; chartSource: 'prepared' | 'demo';
+  genre: string; color: string; source: 'recording' | 'original' | 'upload'; chartSource: 'prepared' | 'demo' | 'estimated';
   sections: SongSection[]; charts: Record<'Easy' | 'Medium' | 'Hard', BeatNote[]>;
   credit?: { name: string; url: string; license: string; licenseUrl: string };
 }
@@ -59,6 +59,7 @@ export interface RhythmChallenge {
   artist: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
   bpm: number;
+  playbackRate?: number;
   durationSeconds: number;
   description: string;
   notes: BeatNote[];

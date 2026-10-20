@@ -1,10 +1,51 @@
 import { DrumType } from '../types';
 
+export const DRUM_KITS = [
+  { id: 'hard-trap', name: 'Hard Trap' },
+  { id: 'bounce', name: 'Bounce' },
+  { id: 'soulful-vintage', name: 'Soulful Vintage' },
+] as const;
+export type DrumKitId = typeof DRUM_KITS[number]['id'];
+
+const KIT_SAMPLE_FILES: Record<DrumKitId, Record<DrumType, string>> = {
+  'hard-trap': {
+    kick: 'kits/hard-trap/kick.wav', snare: 'kits/hard-trap/snare.wav',
+    hihat: 'kits/hard-trap/hihat.wav', tom: 'kits/hard-trap/tom.wav', crash: 'kits/hard-trap/crash.wav',
+  },
+  bounce: {
+    kick: 'kick.wav', snare: 'snare.wav', hihat: 'hihat.wav', tom: 'tom.wav', crash: 'crash.wav',
+  },
+  'soulful-vintage': {
+    kick: 'kits/soulful-vintage/kick.wav', snare: 'kits/soulful-vintage/snare.wav',
+    hihat: 'kits/soulful-vintage/hihat.wav', tom: 'kits/soulful-vintage/tom.wav', crash: 'kits/soulful-vintage/crash.wav',
+  },
+};
+const DRUM_KIT_STORAGE_KEY = 'virtual-drum-kit';
+
 class DrumAudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   private isMuted: boolean = false;
   private volume: number = 0.85;
+  private sampleBuffers: Partial<Record<DrumKitId, Partial<Record<DrumType, AudioBuffer>>>> = {};
+  private samplesPromise: Promise<void> | null = null;
+  private selectedKit: DrumKitId = this.readSavedKit();
+
+  private readSavedKit(): DrumKitId {
+    try {
+      const saved = localStorage.getItem(DRUM_KIT_STORAGE_KEY);
+      return DRUM_KITS.find(kit => kit.id === saved)?.id ?? 'bounce';
+    } catch {
+      return 'bounce';
+    }
+  }
+
+  public getDrumKit(): DrumKitId { return this.selectedKit; }
+
+  public setDrumKit(kit: DrumKitId) {
+    this.selectedKit = kit;
+    try { localStorage.setItem(DRUM_KIT_STORAGE_KEY, kit); } catch { /* Keep selection for this session. */ }
+  }
 
   private initContext() {
     if (!this.ctx) {
@@ -14,6 +55,7 @@ class DrumAudioEngine {
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
+        void this.loadSamples();
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
@@ -24,6 +66,7 @@ class DrumAudioEngine {
   public async unlock() {
     this.initContext();
     if (this.ctx?.state === 'suspended') await this.ctx.resume();
+    await this.loadSamples();
   }
 
   public setVolume(vol: number) {
@@ -44,13 +87,57 @@ class DrumAudioEngine {
     return this.volume;
   }
 
+  private loadSamples(): Promise<void> {
+    const context = this.ctx;
+    if (!context) return Promise.resolve();
+    if (this.samplesPromise) return this.samplesPromise;
+    const base = import.meta.env.BASE_URL;
+    this.samplesPromise = Promise.all(Object.entries(KIT_SAMPLE_FILES).map(async ([kit, files]) => {
+      const decoded = await Promise.all(Object.entries(files).map(async ([drum, file]) => {
+        try {
+          const response = await fetch(`${base}audio/drums/${file}`);
+          if (!response.ok) return null;
+          const audioData = await response.arrayBuffer();
+          return [drum as DrumType, await context.decodeAudioData(audioData)] as const;
+        } catch {
+          return null;
+        }
+      }));
+      this.sampleBuffers[kit as DrumKitId] = Object.fromEntries(decoded.filter((item): item is NonNullable<typeof item> => item !== null));
+    })).then(() => undefined);
+    return this.samplesPromise;
+  }
+
+  private playSample(drum: DrumType, time: number, kit: DrumKitId = this.selectedKit): boolean {
+    const buffer = this.sampleBuffers[kit]?.[drum];
+    if (!this.ctx || !this.masterGain || !buffer) return false;
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(this.masterGain);
+    source.start(time);
+    return true;
+  }
+
   // Play realistic synthesized drum sounds
   public playDrum(drum: DrumType) {
     this.initContext();
     if (!this.ctx || !this.masterGain || this.isMuted) return;
 
     const t = this.ctx.currentTime;
+    if (this.playSample(drum, t)) return;
+    if (this.samplesPromise) {
+      const kit = this.selectedKit;
+      void this.samplesPromise.then(() => {
+        if (!this.ctx || this.isMuted) return;
+        const playTime = this.ctx.currentTime;
+        if (!this.playSample(drum, playTime, kit)) this.playSynthesizedDrum(drum, playTime);
+      });
+      return;
+    }
+    this.playSynthesizedDrum(drum, t);
+  }
 
+  private playSynthesizedDrum(drum: DrumType, t: number) {
     switch (drum) {
       case 'kick':
         this.playKick(t);

@@ -4,6 +4,8 @@ import type { DrumType, RhythmChallenge } from '../types';
 export interface SavedSong {
   id: string; title: string; bpm: number; durationSeconds: number; startSeconds: number;
   difficulty: RhythmChallenge['difficulty']; file: Blob; demoAnalysis?: boolean;
+  beatTimes?: number[];
+  analysisNotes?: { time: number; lane: DrumType }[];
 }
 const PATTERNS: Record<RhythmChallenge['difficulty'], DrumType[]> = {
   Easy: ['kick', 'snare', 'kick', 'snare'],
@@ -19,15 +21,24 @@ export function buildCustomChallenge(song: Omit<SavedSong, 'file'>, source: stri
   const chartDifficulty = song.demoAnalysis ? 'Medium' : song.difficulty;
   const pattern = PATTERNS[chartDifficulty];
   if (!pattern) throw new Error('Choose a difficulty.');
-  const stepMs = (chartDifficulty === 'Easy' ? 60000 : 30000) / song.bpm;
   const startMs = song.startSeconds * 1000;
-  const count = Math.ceil(((song.durationSeconds - 0.2) * 1000 - startMs) / stepMs);
+  const notes = song.analysisNotes?.length
+    ? song.analysisNotes.map((note, index) => ({ id: song.id + '-' + index, drum: note.lane, timeMs: Math.round(note.time * 1000) }))
+    : song.beatTimes?.length
+    ? song.beatTimes.map((time, index) => ({ id: song.id + '-' + index, drum: pattern[index % pattern.length], timeMs: Math.round(time * 1000) }))
+    : (() => {
+      const stepMs = (chartDifficulty === 'Easy' ? 60000 : 30000) / song.bpm;
+      const count = Math.ceil(((song.durationSeconds - 0.2) * 1000 - startMs) / stepMs);
+      return Array.from({ length: count }, (_, step) => ({ id: song.id + '-' + step, drum: pattern[step % pattern.length], timeMs: Math.round(startMs + step * stepMs) }));
+    })();
+  const estimated = Boolean(song.analysisNotes?.length || song.beatTimes?.length);
   const prepared = prepareSong({
     id: song.id, title: song.title.trim(), artist: 'Your music', difficulty: song.difficulty,
-    bpm: song.bpm, durationSeconds: song.durationSeconds, description: 'An illustrative drum chart for your audio. Automatic analysis is not connected yet.',
+    bpm: song.bpm, durationSeconds: song.durationSeconds,
+    description: estimated ? 'An estimated beat chart generated from your audio. Review the timing before playing.' : 'An illustrative drum chart for your audio. Automatic analysis is not connected yet.',
     music: { src: source, introMs: startMs },
-    notes: Array.from({ length: count }, (_, step) => ({ id: song.id + '-' + step, drum: pattern[step % pattern.length], timeMs: Math.round(startMs + step * stepMs) })),
-  }, { genre: 'Your music', color: 'from-violet-500 via-fuchsia-800 to-zinc-950', source: 'upload', chartSource: 'demo' });
+    notes,
+  }, { genre: 'Your music', color: 'from-violet-500 via-fuchsia-800 to-zinc-950', source: 'upload', chartSource: estimated ? 'estimated' : 'demo' });
   return song.demoAnalysis ? chooseSongDifficulty(prepared, song.difficulty) : prepared;
 }
 
@@ -72,6 +83,15 @@ export async function saveSong(song: SavedSong): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('songs', 'readwrite');
     tx.objectStore('songs').put(song);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
+  });
+}
+export async function deleteSong(id: string): Promise<void> {
+  const db = await openLibrary();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('songs', 'readwrite');
+    tx.objectStore('songs').delete(id);
     tx.oncomplete = () => { db.close(); resolve(); };
     tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
   });

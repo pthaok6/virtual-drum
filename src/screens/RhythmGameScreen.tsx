@@ -11,6 +11,7 @@ import {
 import { DRUMS } from '../data/drums';
 import { CameraView } from '../components/CameraView';
 import { DrumPad } from '../components/DrumPad';
+import { DrumKitSelector } from '../components/DrumKitSelector';
 import { cameraTracker, TrackingState } from '../services/cameraTracker';
 import { audioEngine } from '../services/audio';
 import { ArrowLeft, Flame, Target } from 'lucide-react';
@@ -279,6 +280,8 @@ export const RhythmGameScreen: React.FC<RhythmGameScreenProps> = ({
             <Badge variant="outline" className="rounded border-amber-500/20 bg-amber-500/10 px-2 font-mono text-xs font-normal text-amber-400"> {t("Guided")} </Badge>
           </h1>
         </div>
+
+        <DrumKitSelector compact />
 
         <div className="flex items-center gap-2 sm:gap-4">
           <Card className="gap-0 rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1 text-zinc-100">

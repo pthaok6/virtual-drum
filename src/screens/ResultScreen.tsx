@@ -113,6 +113,9 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
       <p className="text-sm text-zinc-400 font-medium mb-6">
         {roomSession ? <>{roomSession.roomName} · {t(roomSession.mode === 'versus' ? 'Room challenge match' : 'Play together')} · {t(result.challenge.title)}</> : <>{t(result.challenge.title)} · {result.challenge.bpm} BPM</>}
       </p>
+      <Badge variant="outline" className="mb-5 border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold text-zinc-200">
+        {t('Difficulty')}: {t(result.challenge.difficulty)}{result.challenge.playbackRate && <> · {t('Song speed')}: {result.challenge.playbackRate}×</>}
+      </Badge>
 
       {/* Main Score & Rank Card */}
       <Card className="mb-6 w-full gap-0 rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900/80 to-zinc-950 p-6 py-6 text-zinc-100 shadow-2xl backdrop-blur-xl sm:p-8 sm:py-8">

@@ -137,6 +137,11 @@ class CameraTracker {
   private async startCamera(videoElement?: HTMLVideoElement, deviceId?: string): Promise<boolean> {
     try {
       this.updateState({ error: null, isInitializing: true });
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(window.isSecureContext
+          ? 'This browser does not support camera access. Try a current version of Safari or Chrome.'
+          : 'Camera access on a phone requires HTTPS. Open this site over HTTPS or use localhost.');
+      }
       await this.initializeHandLandmarker();
 
       const constraints: MediaStreamConstraints = {

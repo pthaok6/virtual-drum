@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Disc3, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Disc3, Search, Trash2 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageProvider';
 import { useChallenges } from '../data/ChallengeLibrary';
 import { AddSongForm } from '../components/AddSongForm';
@@ -9,15 +9,17 @@ import { formatSongTime } from '../services/songExperience';
 import type { SavedSong } from '../services/songLibrary';
 import type { RhythmChallenge, ScreenType } from '../types';
 
-export function ChallengeSelectScreen({ onNavigate, onSelectChallenge, onAddSong, onViewSong, storageMessage }: {
+export function ChallengeSelectScreen({ onNavigate, onSelectChallenge, onAddSong, onRemoveSong, onViewSong, storageMessage }: {
   onNavigate: (screen: ScreenType) => void; onSelectChallenge: (challenge: RhythmChallenge) => void;
-  onAddSong: (song: SavedSong) => Promise<RhythmChallenge>; onViewSong: (id: string) => void; storageMessage?: string;
+  onAddSong: (song: SavedSong) => Promise<RhythmChallenge>; onRemoveSong: (id: string) => Promise<void>; onViewSong: (id: string) => void; storageMessage?: string;
 }) {
   const { t } = useLanguage();
   const challenges = useChallenges();
   const [tab, setTab] = useState('songs');
   const [query, setQuery] = useState('');
   const [genre, setGenre] = useState('All genres');
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState('');
   const songs = challenges.filter(challenge => challenge.music);
   const genres = ['All genres', ...new Set(songs.map(song => song.song?.genre ?? 'Other'))];
   const filtered = challenges.filter(challenge => (tab === 'practice' ? !challenge.music : tab === 'mine' ? challenge.song?.source === 'upload' : challenge.music && challenge.song?.source !== 'upload')
@@ -29,7 +31,9 @@ export function ChallengeSelectScreen({ onNavigate, onSelectChallenge, onAddSong
     <AddSongForm onAddSong={async song => { const challenge = await onAddSong(song); onViewSong(challenge.id); return challenge; }} />
     {storageMessage && <p role="status" className="mb-4 text-sm text-amber-300">{t(storageMessage)}</p>}
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div className="flex gap-1 rounded-xl border border-zinc-800 bg-zinc-900 p-1" role="tablist" aria-label={t('Song collections')}>{[{ id: 'songs', title: 'Discover' }, { id: 'mine', title: 'My songs' }, { id: 'practice', title: 'Drum practice' }].map(item => <button key={item.id} role="tab" aria-selected={tab === item.id} onClick={() => { setTab(item.id); setGenre('All genres'); }} className={'rounded-lg px-4 py-2 text-xs font-bold ' + (tab === item.id ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-200')}>{t(item.title)}</button>)}</div><div className="flex w-full gap-2 sm:w-auto"><div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" /><input type="search" value={query} onChange={event => setQuery(event.target.value)} aria-label={t('Search songs')} placeholder={t('Search songs or artists')} className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 pl-9 pr-3 text-xs outline-none focus:border-rose-400" /></div>{tab !== 'practice' && <select value={genre} onChange={event => setGenre(event.target.value)} aria-label={t('Genre')} className="max-w-36 rounded-xl border border-zinc-800 bg-zinc-900 px-3 text-xs text-zinc-300">{genres.map(item => <option key={item} value={item}>{t(item)}</option>)}</select>}</div></div>
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(challenge => <article key={challenge.id} className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 transition-colors hover:border-zinc-600">
+    {removeError && <p role="alert" className="mb-4 text-sm text-rose-300">{removeError}</p>}
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(challenge => <article key={challenge.id} className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 transition-colors hover:border-zinc-600">
+      {tab === 'mine' && challenge.song?.source === 'upload' && <button type="button" disabled={removingId === challenge.id} aria-label={t('Delete song {title}', { title: challenge.title })} title={t('Delete song')} onClick={async () => { if (!window.confirm(t('Delete song {title}?', { title: challenge.title }))) return; setRemovingId(challenge.id); setRemoveError(''); try { await onRemoveSong(challenge.id); } catch { setRemoveError(t('Could not delete this song.')); } finally { setRemovingId(null); } }} className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-rose-500/40 bg-zinc-950/90 text-rose-300 hover:bg-rose-500/20 disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>}
       {challenge.music && <Link to={'/songs/' + encodeURIComponent(challenge.id)} aria-label={t('View song {title}', { title: challenge.title })}><SongCover challenge={challenge} className="h-44" /></Link>}
       <div className="p-5"><div className="mb-3 flex flex-wrap gap-2"><span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[10px] font-bold text-zinc-400">{t(challenge.song?.source === 'recording' ? 'Recording' : challenge.song?.source === 'upload' ? 'Your music' : challenge.music ? 'Original sample' : 'Guided')}</span>{challenge.song?.chartSource === 'demo' && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">{t('Demo chart')}</span>}</div><h2 className="text-lg font-bold text-white">{challenge.music ? <Link to={'/songs/' + encodeURIComponent(challenge.id)} className="hover:text-rose-300">{challenge.title}</Link> : t(challenge.title)}</h2><p className="mt-1 text-xs text-zinc-500">{t(challenge.artist)}</p><div className="mt-4 flex items-center gap-3 font-mono text-xs text-zinc-400"><span>{formatSongTime(challenge.durationSeconds)}</span><span>·</span><span>{challenge.bpm} BPM</span></div><div className="mt-5">{challenge.music ? <Link to={'/songs/' + encodeURIComponent(challenge.id)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-zinc-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-500">{t('Choose difficulty')}<ArrowRight className="h-4 w-4" /></Link> : <button onClick={() => { onSelectChallenge(challenge); onNavigate('rhythm-game'); }} className="w-full rounded-xl bg-zinc-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-500">{t('Play Challenge')}</button>}</div></div>
     </article>)}</div>

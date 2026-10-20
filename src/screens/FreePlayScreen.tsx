@@ -5,7 +5,7 @@ import { DRUMS } from '../data/drums';
 import { DrumPad } from '../components/DrumPad';
 import { CameraView } from '../components/CameraView';
 import { cameraTracker, TrackingState } from '../services/cameraTracker';
-import { audioEngine } from '../services/audio';
+import { audioEngine, DRUM_KITS, type DrumKitId } from '../services/audio';
 import {
   Camera,
   Volume2,
@@ -38,6 +38,7 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
   onOpenSettings,
 }) => {
   const { t } = useLanguage();
+  const [drumKit, setDrumKit] = useState<DrumKitId>(() => audioEngine.getDrumKit());
   const [trackingState, setTrackingState] = useState<TrackingState>({
     isStreaming: false,
     isInitializing: false,
@@ -284,6 +285,13 @@ export const FreePlayScreen: React.FC<FreePlayScreenProps> = ({
               </div>
               <Badge variant="secondary" className="rounded-md bg-zinc-800 px-2 font-mono text-[10px] text-zinc-300"> {t("5 DRUMS")} </Badge>
             </CardHeader>
+
+            <CardContent className="px-5 pb-3">
+              <label htmlFor="drum-kit-select" className="mb-1.5 block text-[11px] font-semibold text-zinc-400">{t('Drum kit')}</label>
+              <select id="drum-kit-select" value={drumKit} onChange={event => { const kit = event.target.value as DrumKitId; setDrumKit(kit); audioEngine.setDrumKit(kit); }} className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-rose-400">
+                {DRUM_KITS.map(kit => <option key={kit.id} value={kit.id}>{t(kit.name)}</option>)}
+              </select>
+            </CardContent>
 
             {/* Drum Pads Grid */}
             <CardContent className="grid grid-cols-2 justify-items-center gap-3 px-5 sm:gap-4">

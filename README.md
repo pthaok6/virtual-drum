@@ -13,7 +13,7 @@ Toàn bộ nhận diện bàn tay và xử lý âm thanh được thực hiện 
 - Chế độ **Rhythm Challenge** gồm 4 bài luyện từng bước và 3 bài nhạc gốc: **Neon Drive** (96 BPM), **Sunset Groove** (112 BPM), **Midnight Rush** (132 BPM).
 - Thư viện nhạc có tìm kiếm, lọc thể loại, các mục Khám phá / Nhạc của tôi / Luyện trống; trang bài hát cho chọn độ khó, nghe trước và xem nốt theo từng đoạn.
 - Hai bản nhạc thật đi kèm: Greensleeves và Ode to Joy. Bản đồ nốt của hai bản thu là dữ liệu minh họa cho prototype, chưa được phân tích tự động. Nguồn và giấy phép nằm trong `public/audio/ATTRIBUTION.md`.
-- Luồng thêm nhạc: chọn file → đọc thời lượng → mô phỏng phân tích → xem trước nốt theo độ khó → lưu vào thư viện. BPM và các đoạn trong kết quả mô phỏng là dữ liệu mẫu, không phải kết quả nhận diện âm thanh. File nhạc lưu cục bộ bằng IndexedDB, tối đa 50 MB / 10 phút.
+- Luồng thêm nhạc: chọn file → cắt còn tối đa 2 phút đầu → backend dùng Demucs và librosa phân tích → kéo nốt trên timeline để chỉnh thời điểm → lưu chart và audio đã cắt vào IndexedDB. File đầu vào tối đa 50 MB / 10 phút.
 - Bài nhạc có giai điệu, hợp âm, bass và nhịp trống hướng dẫn; chấm Perfect/Good/Miss theo thời gian phát thực tế, có tạm dừng và tiếp tục.
 - Bình luận trên bài chia sẻ ở profile và trang riêng `/posts/:clipId`.
 - Giao diện chia sẻ lên Facebook, Instagram và X/Twitter: chọn nền tảng, xem ảnh kết quả, nội dung và link bài đăng. Các nút chia sẻ/tải ảnh/sao chép hiện mô phỏng tương tác, chưa mở nền tảng hoặc đăng nội dung thật.
@@ -26,9 +26,9 @@ Toàn bộ nhận diện bàn tay và xử lý âm thanh được thực hiện 
 
 ## Phạm vi frontend cho thử thách nhạc
 
-Hiện chỉ triển khai trải nghiệm giao diện, phát nhạc, hiển thị bản đồ nốt và chấm điểm theo thời gian phát. Không có backend phân tích âm thanh, tách trống hoặc tự nhận diện BPM/cấu trúc bài hát.
+Backend Python chỉ dùng cho luồng phân tích bài hát tải lên. Phần còn lại của ứng dụng vẫn chạy ở frontend; file sau khi cắt và chart được lưu cục bộ trong IndexedDB.
 
-Nhạc mẫu của Virtual Drum dùng bản đồ nốt được chuẩn bị từ dữ liệu bài mẫu. Bản thu thật và nhạc người dùng thêm được gắn nhãn **Demo chart**, với BPM, các đoạn và nốt minh họa. Giao diện không trình bày dữ liệu mô phỏng như một kết quả phân tích thật.
+Nhạc mẫu của Virtual Drum dùng bản đồ nốt được chuẩn bị từ dữ liệu bài mẫu. Bài tải lên được phân tích tối đa 2 phút đầu và có thể chỉnh thời điểm các cú đánh trước khi lưu.
 
 Dữ liệu phía giao diện gồm metadata bài hát, file nhạc, các đoạn (thời điểm bắt đầu/kết thúc), và ba bản đồ nốt theo độ khó (loại trống, thời điểm đánh). Khi có backend, có thể thay phần fixture bằng dữ liệu phân tích mà giữ luồng thư viện → trang bài hát → chơi → kết quả.
 
@@ -76,13 +76,25 @@ Camera chỉ hoạt động trên `localhost` hoặc website được phục v�
    npm install
    ```
 
-2. Khởi động development server:
+2. Cài backend phân tích âm thanh (Python 3.10+):
 
    ```bash
-   npm run dev
+   python -m venv .venv
+   .venv\\Scripts\\activate
+   pip install -r backend/requirements.txt
    ```
 
-3. Mở [http://localhost:3000](http://localhost:3000).
+3. Khởi chạy backend phân tích trong terminal đầu tiên:
+
+   ```bash
+   npm run dev:analysis
+   ```
+
+4. Chạy `npm run dev` trong terminal thứ hai. Vite chuyển tiếp `/api` tới backend Python ở cổng `8000`. Backend chỉ phân tích file trong bộ nhớ tạm rồi xóa; file nhạc và chart đã lưu tiếp tục nằm trong IndexedDB của trình duyệt.
+
+Backend dùng Demucs (`htdemucs`) để tách stem trống, sau đó librosa ước lượng BPM và phát hiện onset. Gán kick/snare/hi-hat trong stem trống vẫn dựa trên dải tần nên là heuristic. Demucs tải model ở lần chạy đầu tiên và khuyến nghị dùng GPU; có thể đổi `DEMUCS_DEVICE=cpu` hoặc `cuda`.
+
+5. Mở [http://localhost:3000](http://localhost:3000).
 
 
 ## Scripts

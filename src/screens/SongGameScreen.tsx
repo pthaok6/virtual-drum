@@ -9,10 +9,12 @@ import { DRUMS } from '../data/drums';
 import { audioEngine } from '../services/audio';
 import { cameraTracker, type TrackingState } from '../services/cameraTracker';
 import { createSongState, expireSongNotes, hitSongNote, songResult } from '../services/rhythm';
-import { BeatTimeline } from '../components/BeatTimeline';
+import { NoteHighway } from '../components/NoteHighway';
+import { DrumKitSelector } from '../components/DrumKitSelector';
 import { CameraView } from '../components/CameraView';
 import { DrumPad } from '../components/DrumPad';
 import { Button } from '../components/ui/button';
+import { Slider } from '../components/ui/slider';
 
 export function SongGameScreen({ challenge, settings, onFinishGame, onNavigate }: {
   challenge: RhythmChallenge; settings: AppSettings; onFinishGame: (result: GameResult) => void; onNavigate: (screen: ScreenType) => void;
@@ -26,6 +28,7 @@ export function SongGameScreen({ challenge, settings, onFinishGame, onNavigate }
   const [started, setStarted] = useState(false);
   const [timeMs, setTimeMs] = useState(0);
   const [musicEnabled, setMusicEnabled] = useState(true);
+  const [musicVolume, setMusicVolume] = useState(0.35);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState<{ drum: DrumType; rating: HitRating; combo: number } | null>(null);
   const [activeHits, setActiveHits] = useState<Record<DrumType, { isHit: boolean; rating?: HitRating }>>({ hihat: { isHit: false }, tom: { isHit: false }, crash: { isHit: false }, snare: { isHit: false }, kick: { isHit: false } });
@@ -44,7 +47,10 @@ export function SongGameScreen({ challenge, settings, onFinishGame, onNavigate }
     const result = hitSongNote(statsRef.current, drum, audio.currentTime * 1000);
     statsRef.current = result.state;
     setStats(result.state);
-    if (settings.sfxEnabled) { audioEngine.playDrum(drum); audioEngine.playHitSound(result.rating); }
+    if (settings.sfxEnabled) {
+      audioEngine.playDrum(drum);
+      if (result.rating === 'miss') audioEngine.playHitSound('miss');
+    }
     setFeedback({ drum, rating: result.rating, combo: result.state.combo });
     setActiveHits(previous => ({ ...previous, [drum]: { isHit: true, rating: result.rating } }));
     timers.current.push(setTimeout(() => setActiveHits(previous => ({ ...previous, [drum]: { isHit: false } })), 180));
@@ -63,19 +69,24 @@ export function SongGameScreen({ challenge, settings, onFinishGame, onNavigate }
   useEffect(() => {
     if (!playing) return;
     let frame: number;
-    const update = () => {
-      const audio = audioRef.current;
-      if (!audio || finishedRef.current) return;
-      const now = audio.currentTime * 1000;
-      setTimeMs(now);
-      const next = expireSongNotes(statsRef.current, now);
-      if (next !== statsRef.current) { statsRef.current = next; setStats(next); }
+    let lastUiUpdate = 0;
+    const update = (frameTime: number) => {
+      if (frameTime - lastUiUpdate >= 1000 / 30) {
+        lastUiUpdate = frameTime;
+        const audio = audioRef.current;
+        if (!audio || finishedRef.current) return;
+        const now = audio.currentTime * 1000;
+        setTimeMs(now);
+        const next = expireSongNotes(statsRef.current, now);
+        if (next !== statsRef.current) { statsRef.current = next; setStats(next); }
+      }
       frame = requestAnimationFrame(update);
     };
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
   }, [playing]);
-  useEffect(() => { if (audioRef.current) { audioRef.current.volume = settings.volume * 0.65; audioRef.current.muted = !musicEnabled; } }, [settings.volume, musicEnabled]);
+  useEffect(() => { if (audioRef.current) { audioRef.current.volume = musicVolume; audioRef.current.muted = !musicEnabled; } }, [musicVolume, musicEnabled]);
+  useEffect(() => { if (audioRef.current) audioRef.current.playbackRate = challenge.playbackRate ?? 1; }, [challenge.playbackRate]);
   useEffect(() => {
     const audio = audioRef.current;
     return () => { audio?.pause(); timers.current.forEach(clearTimeout); };
@@ -98,12 +109,12 @@ export function SongGameScreen({ challenge, settings, onFinishGame, onNavigate }
     </div>
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
       <div><h2 className="font-bold text-white">{!started ? t('Get Ready') : playing && timeMs < challenge.music!.introMs ? count : t('Hit the drums when the notes reach the glowing line.')}</h2><p className="mt-1 text-xs text-zinc-400">{t('The song keeps playing. Missed notes advance automatically.')}</p></div>
-      <div className="flex gap-2"><Button onClick={togglePlayback} className="bg-rose-500 text-white hover:bg-rose-600">{playing ? <Pause /> : <Play />}{playing ? t('Pause') : started ? t('Resume song') : t('Start song')}</Button><Button variant="outline" onClick={() => setMusicEnabled(!musicEnabled)} aria-pressed={musicEnabled}><Volume2 />{t(musicEnabled ? 'Music on' : 'Music off')}</Button></div>
+      <div className="flex flex-wrap items-center gap-3"><Button onClick={togglePlayback} className="bg-rose-500 text-white hover:bg-rose-600">{playing ? <Pause /> : <Play />}{playing ? t('Pause') : started ? t('Resume song') : t('Start song')}</Button><Button variant="outline" onClick={() => setMusicEnabled(!musicEnabled)} aria-pressed={musicEnabled}><Volume2 />{t(musicEnabled ? 'Music on' : 'Music off')}</Button><label className="flex min-w-48 items-center gap-2 text-xs text-zinc-300"><span className="whitespace-nowrap">{t('Music volume')}</span><Slider min={0} max={1} step={0.05} value={[musicVolume]} onValueChange={value => setMusicVolume(Array.isArray(value) ? value[0] : value)} aria-label={t('Music volume')} className="w-24 cursor-pointer [&_[data-slot=slider-range]]:bg-sky-400 [&_[data-slot=slider-track]]:h-1.5 [&_[data-slot=slider-track]]:bg-zinc-700"/><span className="w-9 text-right font-mono">{Math.round(musicVolume * 100)}%</span></label><DrumKitSelector compact /></div>
     </div>
     {error && <p role="alert" className="text-sm text-rose-300">{t(error)}</p>}
     {challenge.song?.chartSource === 'demo' && <p className="rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{t('Demo chart: BPM, sections, and drum notes are illustrative. Automatic music analysis is not connected.')}</p>}
     <div className="flex items-center justify-between text-xs text-zinc-500"><span>{formatSongTime(timeMs / 1000)} / {formatSongTime(challenge.durationSeconds)}</span><span>{t('Feel the song')}</span></div>
-    <BeatTimeline notes={stats.notes} currentTimeMs={timeMs} bpm={challenge.bpm} lastHitFeedback={feedback} />
+    <NoteHighway notes={stats.notes} currentTimeMs={timeMs} bpm={challenge.bpm} lastHitFeedback={feedback} />
     {challenge.song && <SongStructure sections={challenge.song.sections} currentMs={timeMs} />}
     <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
       <CameraView isCameraActive={tracking.isStreaming} isCameraInitializing={tracking.isInitializing} cameraError={tracking.error} onToggleCamera={() => { if (tracking.isStreaming) cameraTracker.stop(); else void cameraTracker.start(undefined, settings.selectedCameraId); }} leftHand={tracking.leftHand} rightHand={tracking.rightHand} zoneEnergies={tracking.zoneEnergies} activeHits={activeHits} onDrumClick={hit} promptedDrum={upcoming && Math.abs(upcoming.timeMs - timeMs) < 500 ? upcoming.drum : null} mirror={settings.mirrorCamera} showHandIndicators={settings.showHandIndicators} />

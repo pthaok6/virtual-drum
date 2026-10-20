@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CHALLENGES } from '../data/challenges';
 import type { RhythmChallenge } from '../types';
-import { buildCustomChallenge, loadSavedSongs, saveSong, type SavedSong } from '../services/songLibrary';
+import { buildCustomChallenge, deleteSong as deleteStoredSong, loadSavedSongs, saveSong, type SavedSong } from '../services/songLibrary';
 
 export function useSongLibrary() {
   const [customSongs, setCustomSongs] = useState<RhythmChallenge[]>([]);
@@ -35,6 +35,16 @@ export function useSongLibrary() {
     catch { setStorageMessage('Song added for this session, but browser storage could not save it.'); }
     return challenge;
   };
+  const removeSong = async (id: string) => {
+    await deleteStoredSong(id);
+    const challenge = customSongs.find(song => song.id === id);
+    if (challenge?.music?.src.startsWith('blob:')) {
+      URL.revokeObjectURL(challenge.music.src);
+      urls.current = urls.current.filter(url => url !== challenge.music?.src);
+    }
+    setCustomSongs(previous => previous.filter(song => song.id !== id));
+    setStorageMessage('');
+  };
   const challenges = useMemo(() => [...CHALLENGES, ...customSongs], [customSongs]);
-  return { challenges, addSong, storageMessage };
+  return { challenges, addSong, removeSong, storageMessage };
 }
