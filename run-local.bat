@@ -21,6 +21,10 @@ if not exist ".venv\Scripts\python.exe" (
   echo Creating Python virtual environment...
   python -m venv .venv
   if errorlevel 1 goto :failed
+)
+
+".venv\Scripts\python.exe" -c "import uvicorn, demucs, librosa" >nul 2>nul
+if errorlevel 1 (
   echo Installing audio backend dependencies. This can take a while...
   ".venv\Scripts\python.exe" -m pip install -r backend\requirements.txt
   if errorlevel 1 goto :failed
