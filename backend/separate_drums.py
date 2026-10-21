@@ -18,8 +18,9 @@ def save_with_soundfile(uri, source, sample_rate, **_kwargs) -> None:
 def main() -> None:
     source_path = Path(sys.argv[1])
     output_path = Path(sys.argv[2])
-    model = sys.argv[3]
-    device = sys.argv[4]
+    backing_path = Path(sys.argv[3])
+    model = sys.argv[4]
+    device = sys.argv[5]
     output_dir = output_path.parent / "demucs-output"
     torchaudio.save = save_with_soundfile
     demucs.separate.main([
@@ -30,9 +31,13 @@ def main() -> None:
         str(source_path),
     ])
     separated_path = output_dir / model / source_path.stem / "drums.wav"
+    backing_separated_path = output_dir / model / source_path.stem / "no_drums.wav"
     if not separated_path.exists():
         raise FileNotFoundError(f"Demucs output not found: {separated_path}")
     separated_path.replace(output_path)
+    if not backing_separated_path.exists():
+        raise FileNotFoundError(f"Demucs backing output not found: {backing_separated_path}")
+    backing_separated_path.replace(backing_path)
 
 
 if __name__ == "__main__":

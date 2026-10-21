@@ -6,6 +6,20 @@ export interface SongAnalysis {
   analyzedDurationSeconds: number;
   beatTimes: number[];
   notes: { id: string; time: number; lane: DrumType }[];
+  backingTrack: File;
+}
+
+function pcm16MonoWav(pcm: ArrayBuffer, sampleRate: number): ArrayBuffer {
+  const wav = new ArrayBuffer(44 + pcm.byteLength);
+  const view = new DataView(wav);
+  const write = (offset: number, value: string) => [...value].forEach((char, index) => view.setUint8(offset + index, char.charCodeAt(0)));
+  write(0, 'RIFF'); view.setUint32(4, wav.byteLength - 8, true); write(8, 'WAVE');
+  write(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  write(36, 'data'); view.setUint32(40, pcm.byteLength, true);
+  new Uint8Array(wav, 44).set(new Uint8Array(pcm));
+  return wav;
 }
 
 export async function trimAudioFile(file: File, maxSeconds = 120): Promise<File> {
@@ -61,6 +75,13 @@ export async function analyzeSongFile(file: File, signal?: AbortSignal): Promise
     const detail = await response.json().catch(() => null) as { detail?: string } | null;
     throw new Error(detail?.detail ?? 'Could not analyze this audio file. Try another file.');
   }
-  const result = await response.json() as Omit<SongAnalysis, 'notes'> & { notes: { time: number; lane: DrumType }[] };
-  return { ...result, notes: result.notes.map((note, index) => ({ ...note, id: String(index) })) };
+  const result = await response.json() as Omit<SongAnalysis, 'notes' | 'backingTrack'> & {
+    notes: { time: number; lane: DrumType }[]; backingAudioBase64: string; backingSampleRate: number;
+  };
+  const binary = atob(result.backingAudioBase64);
+  const pcm = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) pcm[index] = binary.charCodeAt(index);
+  const backingTrack = new File([pcm16MonoWav(pcm.buffer, result.backingSampleRate)], 'backing-track.wav', { type: 'audio/wav' });
+  const { backingAudioBase64: _audio, backingSampleRate: _rate, ...analysis } = result;
+  return { ...analysis, notes: result.notes.map((note, index) => ({ ...note, id: String(index) })), backingTrack };
 }

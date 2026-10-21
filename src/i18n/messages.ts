@@ -1,6 +1,9 @@
 export const vietnamese: Record<string, string> = {
   "Songs longer than two minutes are trimmed to their first two minutes.": "Bài dài hơn 2 phút sẽ được cắt còn 2 phút đầu.",
   "Songs are saved in this browser when storage is available. Files are trimmed to two minutes and saved in IndexedDB.": "Bài hát được lưu trong trình duyệt nếu còn dung lượng. File sẽ được cắt còn 2 phút và lưu trong IndexedDB.",
+  "Audio is sent to the analysis backend to separate drums and create a beat chart. The backing track is saved in this browser.": "Âm thanh được gửi đến backend để tách tiếng trống và tạo biểu đồ nhịp. Bản nhạc đã tách trống được lưu trong trình duyệt.",
+  "Separating drums and creating chart": "Đang tách tiếng trống và tạo biểu đồ nhịp",
+  "Songs are saved in this browser when storage is available. The separated backing track is saved in IndexedDB.": "Bài hát được lưu trong trình duyệt nếu còn dung lượng. Bản nhạc đã tách trống được lưu trong IndexedDB.",
   "Edit hit positions": "Chỉnh vị trí đánh",
   "Drag a note left or right to adjust its timing.": "Kéo nốt sang trái hoặc phải để chỉnh thời điểm đánh.",
   "Editable drum hit timeline": "Dòng thời gian có thể chỉnh sửa các cú đánh trống",

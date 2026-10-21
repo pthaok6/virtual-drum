@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import logging
+import base64
 import subprocess
 import sys
 import tempfile
@@ -64,6 +65,7 @@ def analyze(file: UploadFile = File(...)) -> dict:
             input_path = Path(work_dir) / f"upload{suffix}"
             analysis_path = Path(work_dir) / "first-two-minutes.wav"
             drum_path = Path(work_dir) / "drums.wav"
+            backing_path = Path(work_dir) / "no_drums.wav"
             input_path.write_bytes(contents)
             # Keep and analyze only the requested window; later audio is discarded.
             source_audio, source_rate = librosa.load(
@@ -76,7 +78,7 @@ def analyze(file: UploadFile = File(...)) -> dict:
             try:
                 subprocess.run(
                     [sys.executable, str(Path(__file__).with_name("separate_drums.py")),
-                     str(analysis_path), str(drum_path), os.getenv("DEMUCS_MODEL", "htdemucs"),
+                     str(analysis_path), str(drum_path), str(backing_path), os.getenv("DEMUCS_MODEL", "htdemucs"),
                      os.getenv("DEMUCS_DEVICE", "cpu")],
                     check=True, capture_output=True, text=True, timeout=1200,
                 )
@@ -91,7 +93,12 @@ def analyze(file: UploadFile = File(...)) -> dict:
                 raise HTTPException(422, f"Could not separate drums: {message}") from error
             if not drum_path.exists():
                 raise HTTPException(422, "Drum separation did not produce an audio track.")
+            if not backing_path.exists():
+                raise HTTPException(422, "Drum separation did not produce a backing track.")
             audio, sample_rate = librosa.load(drum_path, sr=22050, mono=True)
+            backing_audio, backing_rate = librosa.load(backing_path, sr=22050, mono=True)
+            backing_audio = np.clip(backing_audio, -1, 1)
+            backing_pcm = (backing_audio * 32767).astype("<i2").tobytes()
         duration = float(len(audio) / sample_rate)
         if duration < 3 or duration > ANALYSIS_SECONDS + 1:
             raise HTTPException(422, "Could not analyze the first two minutes of this audio.")
@@ -117,6 +124,9 @@ def analyze(file: UploadFile = File(...)) -> dict:
             "analyzedDurationSeconds": round(analyzed_duration, 3),
             "beatTimes": [round(float(time), 3) for time in beats],
             "notes": notes,
+            # Mono 22.05 kHz PCM keeps the two-minute browser-stored backing track compact.
+            "backingAudioBase64": base64.b64encode(backing_pcm).decode("ascii"),
+            "backingSampleRate": backing_rate,
         }
     except HTTPException:
         raise
