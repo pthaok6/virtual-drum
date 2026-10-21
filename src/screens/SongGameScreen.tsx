@@ -114,7 +114,7 @@ export function SongGameScreen({ challenge, settings, onFinishGame, onNavigate }
     {error && <p role="alert" className="text-sm text-rose-300">{t(error)}</p>}
     {challenge.song?.chartSource === 'demo' && <p className="rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{t('Demo chart: BPM, sections, and drum notes are illustrative. Automatic music analysis is not connected.')}</p>}
     <div className="flex items-center justify-between text-xs text-zinc-500"><span>{formatSongTime(timeMs / 1000)} / {formatSongTime(challenge.durationSeconds)}</span><span>{t('Feel the song')}</span></div>
-    <NoteHighway notes={stats.notes} currentTimeMs={timeMs} bpm={challenge.bpm} lastHitFeedback={feedback} />
+    <NoteHighway notes={stats.notes} currentTimeMs={timeMs} bpm={challenge.bpm} lastHitFeedback={feedback} activeHits={activeHits} onDrumHit={hit} />
     {challenge.song && <SongStructure sections={challenge.song.sections} currentMs={timeMs} />}
     <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
       <CameraView isCameraActive={tracking.isStreaming} isCameraInitializing={tracking.isInitializing} cameraError={tracking.error} onToggleCamera={() => { if (tracking.isStreaming) cameraTracker.stop(); else void cameraTracker.start(undefined, settings.selectedCameraId); }} leftHand={tracking.leftHand} rightHand={tracking.rightHand} zoneEnergies={tracking.zoneEnergies} activeHits={activeHits} onDrumClick={hit} promptedDrum={upcoming && Math.abs(upcoming.timeMs - timeMs) < 500 ? upcoming.drum : null} mirror={settings.mirrorCamera} showHandIndicators={settings.showHandIndicators} />

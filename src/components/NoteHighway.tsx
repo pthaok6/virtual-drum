@@ -13,9 +13,11 @@ interface NoteHighwayProps {
   currentTimeMs: number;
   bpm: number;
   lastHitFeedback?: { drum: DrumType; rating: HitRating; combo: number } | null;
+  activeHits?: Record<DrumType, { isHit: boolean; rating?: HitRating }>;
+  onDrumHit?: (drum: DrumType) => void;
 }
 
-export function NoteHighway({ notes, currentTimeMs, bpm, lastHitFeedback }: NoteHighwayProps) {
+export function NoteHighway({ notes, currentTimeMs, bpm, lastHitFeedback, activeHits, onDrumHit }: NoteHighwayProps) {
   const { t } = useLanguage();
   const visibleNotes = notes.filter(note => note.timeMs >= currentTimeMs - LOOK_BEHIND_MS && note.timeMs <= currentTimeMs + LOOK_AHEAD_MS);
 
@@ -38,7 +40,7 @@ export function NoteHighway({ notes, currentTimeMs, bpm, lastHitFeedback }: Note
               </div>;
             })}
             <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-1 sm:bottom-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 text-[10px] font-black sm:h-10 sm:w-10 sm:text-xs" style={{ borderColor: drum.color, color: drum.color, boxShadow: `0 0 12px ${drum.glowColor}` }}>{drum.key}</span>
+              <button type="button" aria-label={`${t(drum.name)} (${drum.key})`} onClick={() => onDrumHit?.(id)} className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[10px] font-black transition-all duration-100 sm:h-10 sm:w-10 sm:text-xs ${activeHits?.[id]?.isHit ? 'scale-125 bg-white text-zinc-950' : 'bg-zinc-950/80 hover:scale-110'}`} style={{ borderColor: activeHits?.[id]?.isHit ? '#fff' : drum.color, color: activeHits?.[id]?.isHit ? '#090b12' : drum.color, boxShadow: activeHits?.[id]?.isHit ? `0 0 24px ${drum.color}, 0 0 48px ${drum.glowColor}` : `0 0 12px ${drum.glowColor}` }}>{drum.key}</button>
               <span className="text-center text-[9px] font-bold leading-tight text-zinc-300 sm:text-[10px]">{t(drum.name)}</span>
             </div>
           </div>;
