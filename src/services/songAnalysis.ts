@@ -61,12 +61,18 @@ export async function trimAudioFile(file: File, maxSeconds = 120): Promise<File>
   }
 }
 
+const API_BASE_URL = (
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
+  (typeof process !== 'undefined' && process.env?.VITE_API_URL) ||
+  ''
+).replace(/\/+$/, '');
+
 export async function analyzeSongFile(file: File, signal?: AbortSignal): Promise<SongAnalysis> {
   const body = new FormData();
   body.append('file', file);
   let response: Response;
   try {
-    response = await fetch('/api/analyze', { method: 'POST', body, signal });
+    response = await fetch(`${API_BASE_URL}/api/analyze`, { method: 'POST', body, signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error;
     throw new Error('Analysis server is unavailable. Start the Python backend and try again.');

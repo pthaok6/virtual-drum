@@ -1,0 +1,50 @@
+# Render Blueprint specification for Virtual Drum backend
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  # ==========================================
+  # Python Analysis Backend (Docker Runtime)
+  # Recommended: Docker runtime includes ffmpeg and libsndfile
+  # which are required for Demucs and Librosa audio analysis.
+  # ==========================================
+  - type: web
+    name: virtual-drum-backend
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_ORIGINS
+        value: "https://virtual-drum-three.vercel.app/" # Set to your deployed frontend URL (e.g. https://your-site.vercel.app)
+      - key: DEMUCS_DEVICE
+        value: cpu
+      - key: DEMUCS_MODEL
+        value: htdemucs
+
+  # ==========================================
+  # ALTERNATIVE: Native Python Runtime
+  # If you prefer not to use Docker, uncomment below and comment out the Docker service above.
+  # Note: ffmpeg is needed for non-WAV formats.
+  # ==========================================
+  # - type: web
+  #   name: virtual-drum-backend-python
+  #   runtime: python
+  #   plan: free
+  #   region: singapore
+  #   rootDir: backend
+  #   buildCommand: pip install --upgrade pip && pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements.txt
+  #   startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+  #   healthCheckPath: /api/health
+  #   envVars:
+  #     - key: PYTHON_VERSION
+  #       value: 3.11.9
+  #     - key: FRONTEND_ORIGINS
+  #       value: "*"
+  #     - key: DEMUCS_DEVICE
+  #       value: cpu
+  #     - key: DEMUCS_MODEL
+  #       value: htdemucs

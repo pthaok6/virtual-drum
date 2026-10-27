@@ -116,7 +116,20 @@ npm run build
 npm run preview
 ```
 
-Thư mục `dist` là website tĩnh và có thể triển khai lên các dịch vụ static hosting. Khi triển khai, cần dùng HTTPS để trình duyệt cho phép truy cập camera.
+Thư mục `dist` là website tĩnh và có thể triển khai lên các dịch vụ static hosting (Vercel, Cloudflare Pages, Netlify,...). Khi triển khai, cần dùng HTTPS để trình duyệt cho phép truy cập camera.
+
+### Triển khai Backend lên Render
+
+Backend phân tích âm thanh (FastAPI + Demucs + Librosa) có thể triển khai lên Render bằng Blueprint file [render.yaml](file:///d:/GitHub/virtual-drum/render.yaml):
+
+1. Đẩy code lên GitHub.
+2. Trên Render Dashboard, chọn **New** → **Blueprint**.
+3. Kết nối repository của bạn. Render sẽ tự động đọc `render.yaml` và build Docker container cho backend (đã cấu hình sẵn `ffmpeg`, PyTorch CPU và các thư viện cần thiết).
+4. Thiết lập biến môi trường trên Render nếu cần:
+   - `FRONTEND_ORIGINS`: Địa chỉ domain của frontend (VD: `https://your-frontend.vercel.app`) hoặc `*`.
+   - `DEMUCS_DEVICE`: `cpu`.
+5. Trên frontend (Vercel/Hosting), cấu hình biến môi trường:
+   - `VITE_API_URL`: URL của backend trên Render (VD: `https://virtual-drum-backend.onrender.com`).
 
 Model Hand Landmarker và các file WebAssembly đã được lưu trong `public/mediapipe`, vì vậy quá trình nhận diện không cần tải model từ CDN. Ứng dụng ưu tiên GPU và tự chuyển sang CPU nếu GPU delegate không khả dụng.
 
