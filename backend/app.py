@@ -34,6 +34,16 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+@app.head("/")
+def root() -> dict[str, str]:
+    return {
+        "service": "Virtual Drum Analysis API",
+        "status": "online",
+        "health": "/api/health",
+    }
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -79,29 +89,36 @@ def analyze(file: UploadFile = File(...)) -> dict:
             analyzed_duration = float(source_audio.shape[-1] / source_rate)
             if analyzed_duration < 3:
                 raise HTTPException(422, "Choose an audio file at least 3 seconds long.")
-            sf.write(analysis_path, source_audio.T if source_audio.ndim == 2 else source_audio, source_rate, subtype="PCM_16")
-            try:
-                subprocess.run(
-                    [sys.executable, str(Path(__file__).with_name("separate_drums.py")),
-                     str(analysis_path), str(drum_path), str(backing_path), os.getenv("DEMUCS_MODEL", "htdemucs"),
-                     os.getenv("DEMUCS_DEVICE", "cpu")],
-                    check=True, capture_output=True, text=True, timeout=1200,
-                )
-            except subprocess.TimeoutExpired as error:
-                raise HTTPException(504, "Drum separation took too long. Try a shorter song.") from error
-            except subprocess.CalledProcessError as error:
-                details = (error.stderr or error.stdout or "").strip()
-                logger.error("Demucs failed (exit %s): %s", error.returncode, details[-3000:])
-                if "No module named 'demucs'" in details or "No module named demucs" in details:
-                    raise HTTPException(503, "Demucs is not installed. Install backend/requirements.txt.") from error
-                message = details.splitlines()[-1] if details else "unknown Demucs error"
-                raise HTTPException(422, f"Could not separate drums: {message}") from error
-            if not drum_path.exists():
-                raise HTTPException(422, "Drum separation did not produce an audio track.")
-            if not backing_path.exists():
-                raise HTTPException(422, "Drum separation did not produce a backing track.")
-            audio, sample_rate = librosa.load(drum_path, sr=22050, mono=True)
-            backing_audio, backing_rate = librosa.load(backing_path, sr=22050, mono=True)
+            USE_DEMUCS = os.getenv("USE_DEMUCS", "false").lower() in ("true", "1", "yes")
+
+            used_demucs = False
+            if USE_DEMUCS:
+                try:
+                    sf.write(analysis_path, source_audio.T if source_audio.ndim == 2 else source_audio, source_rate, subtype="PCM_16")
+                    subprocess.run(
+                        [sys.executable, str(Path(__file__).with_name("separate_drums.py")),
+                         str(analysis_path), str(drum_path), str(backing_path), os.getenv("DEMUCS_MODEL", "htdemucs"),
+                         os.getenv("DEMUCS_DEVICE", "cpu")],
+                        check=True, capture_output=True, text=True, timeout=120,
+                    )
+                    if drum_path.exists() and backing_path.exists():
+                        audio, sample_rate = librosa.load(drum_path, sr=22050, mono=True)
+                        backing_audio, backing_rate = librosa.load(backing_path, sr=22050, mono=True)
+                        used_demucs = True
+                except Exception as error:
+                    logger.warning("Demucs failed or timed out, falling back to fast Librosa HPSS: %s", error)
+
+            if not used_demucs:
+                # Fast & lightweight separation using Librosa HPSS (Harmonic-Percussive Source Separation)
+                # Runs in ~2 seconds and uses <60MB RAM (prevents OOM crashes on Render Free Tier 512MB RAM)
+                mono_audio = librosa.to_mono(source_audio) if source_audio.ndim == 2 else source_audio
+                sample_rate = 22050
+                audio_22k = librosa.resample(mono_audio, orig_sr=source_rate, target_sr=sample_rate)
+                harm, perc = librosa.effects.hpss(audio_22k)
+                audio = perc
+                backing_audio = harm
+                backing_rate = sample_rate
+
             backing_audio = np.clip(backing_audio, -1, 1)
             backing_pcm = (backing_audio * 32767).astype("<i2").tobytes()
         duration = float(len(audio) / sample_rate)
