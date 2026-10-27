@@ -27,6 +27,8 @@ def main() -> None:
         "-d", device,
         "--two-stems", "drums",
         "-n", model,
+        "--shifts", "0",
+        "--overlap", "0.1",
         "--out", str(output_dir),
         str(source_path),
     ])

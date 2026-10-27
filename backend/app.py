@@ -15,13 +15,13 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 MAX_BYTES = 50 * 1024 * 1024
-ANALYSIS_SECONDS = 120
+ANALYSIS_SECONDS = int(os.getenv("ANALYSIS_SECONDS", "60"))
 ANALYSIS_SAMPLE_RATE = 44100
 ALLOWED_SUFFIXES = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".webm"}
 
-raw_origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+raw_origins = os.getenv("FRONTEND_ORIGINS", "*")
 allowed_origins = [o.strip().rstrip("/") for o in raw_origins.split(",") if o.strip()]
-if "*" in allowed_origins:
+if "*" in allowed_origins or not allowed_origins:
     allowed_origins = ["*"]
 
 app = FastAPI(title="Virtual Drum song analysis")
