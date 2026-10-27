@@ -19,7 +19,7 @@ services:
       - key: PORT
         value: 10000
       - key: FRONTEND_ORIGINS
-        value: "https://virtual-drum-three.vercel.app/" # Set to your deployed frontend URL (e.g. https://your-site.vercel.app)
+        value: "https://virtual-drum-three.vercel.app" # Set to your deployed frontend URL (e.g. https://your-site.vercel.app)
       - key: DEMUCS_DEVICE
         value: cpu
       - key: DEMUCS_MODEL

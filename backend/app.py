@@ -19,11 +19,16 @@ ANALYSIS_SECONDS = 120
 ANALYSIS_SAMPLE_RATE = 44100
 ALLOWED_SUFFIXES = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".webm"}
 
+raw_origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+allowed_origins = [o.strip().rstrip("/") for o in raw_origins.split(",") if o.strip()]
+if "*" in allowed_origins:
+    allowed_origins = ["*"]
+
 app = FastAPI(title="Virtual Drum song analysis")
 logger = logging.getLogger("uvicorn.error")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("FRONTEND_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
+    allow_origins=allowed_origins,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
