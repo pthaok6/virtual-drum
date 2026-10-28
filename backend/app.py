@@ -15,7 +15,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 MAX_BYTES = 50 * 1024 * 1024
-ANALYSIS_SECONDS = int(os.getenv("ANALYSIS_SECONDS", "60"))
+ANALYSIS_SECONDS = int(os.getenv("ANALYSIS_SECONDS", "30"))
 ANALYSIS_SAMPLE_RATE = 44100
 ALLOWED_SUFFIXES = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".webm"}
 
