@@ -1,4 +1,5 @@
 import { useLanguage } from '@/i18n/LanguageProvider';
+import { useAuth } from '@/context/AuthContext';
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ScreenType } from '../types';
@@ -28,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const { t } = useLanguage();
   const location = useLocation();
+  const { profile, user } = useAuth();
   return (
     <header className="sticky top-0 z-40 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
       <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-y-2 px-4 py-2 sm:px-6 lg:flex-nowrap lg:px-8">
@@ -99,8 +101,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           <Link to="/users" aria-label={t('Search users')} title={t('Search users')} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><Search className="h-4 w-4" /></Link>
           <Link to="/messages" aria-label={t('Messages')} title={t('Messages')} className="relative rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><MessageCircle className="h-4 w-4" />{unreadMessages > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">{unreadMessages}</span>}</Link>
           <Link to="/notifications" aria-label={t("Notifications")} title={t("Notifications")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><Bell className="h-4 w-4" /></Link>
-          <Link to="/profile/you" aria-label={t("Profile")} title={t("Profile")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><UserRound className="h-4 w-4" /></Link>
-          <Link to="/login" aria-label={t("Log in")} title={t("Log in")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><LogIn className="h-4 w-4" /></Link>
+          <Link to="/profile/you" aria-label={t("Profile")} title={profile?.displayName || t("Profile")} className={`rounded-lg p-2 transition-colors ${profile ? 'text-rose-400 bg-rose-500/10 hover:bg-rose-500/20' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}>
+            <UserRound className="h-4 w-4" />
+          </Link>
+          {!profile && !user ? (
+            <Link to="/login" aria-label={t("Log in")} title={t("Log in")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white"><LogIn className="h-4 w-4" /></Link>
+          ) : (
+            <span className="hidden sm:inline-block text-[11px] font-semibold text-zinc-400 max-w-20 truncate">{profile?.displayName || user?.email?.split('@')[0]}</span>
+          )}
           {/* Camera Status Badge */}
           <Badge
             id="nav-camera-badge"

@@ -21,6 +21,7 @@ import { ChallengeSelectScreen } from './screens/ChallengeSelectScreen';
 import { RhythmGameScreen } from './screens/RhythmGameScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { AuthScreen, Leaderboard, Missing, NotificationsScreen, ProfileScreen, ReplayScreen, RoomScreen, RoomsScreen, ShareScreen } from './screens/CommunityScreens';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 const paths: Record<ScreenType, string> = {
   home: '/', 'free-play': '/free-play', 'challenge-select': '/challenges',
@@ -31,9 +32,10 @@ function readStored<T>(key: string, fallback: T): T {
   try { const stored = localStorage.getItem(key); return stored ? JSON.parse(stored) as T : fallback; } catch { return fallback; }
 }
 
-export default function App() {
+function AppContent() {
   const { language, setLanguage, t } = useLanguage();
-  const songLibrary = useSongLibrary();
+  const { profile } = useAuth();
+  const songLibrary = useSongLibrary(profile?.id);
   const community = useCommunity();
   const commentActions = { comments: community.comments, onAddComment: community.addComment, onRemoveComment: community.removeComment };
   const unreadMessages = community.messages.filter(message => message.recipientId === 'you' && !message.read).length;
@@ -41,7 +43,7 @@ export default function App() {
   const location = useLocation();
   const [selectedChallenge, setSelectedChallenge] = useState<RhythmChallenge>(CHALLENGES[0]);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
-  const [roomSession, setRoomSession] = useState<{ roomName: string; mode: 'versus' | 'together' } | null>(null);
+  const [roomSession, setRoomSession] = useState<{ roomName: string; mode: 'versus' | 'together'; roomId?: string } | null>(null);
   const [latestClipId, setLatestClipId] = useState<string | null>(null);
   const [shareImageClipId, setShareImageClipId] = useState<string | null>(null);
   const [createdClips, setCreatedClips] = useState<ReplayClip[]>(() => readStored('virtual-drum-clips', []));
@@ -107,4 +109,12 @@ export default function App() {
     <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={settings} onUpdateSettings={handleUpdateSettings} />
     <ShareImageDialog clip={imageClip} onClose={() => setShareImageClipId(null)} />
   </div></ChallengeLibraryProvider>;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
 }
