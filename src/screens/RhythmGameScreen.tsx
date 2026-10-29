@@ -1,5 +1,6 @@
 import { useLanguage } from '@/i18n/LanguageProvider';
-import React, { useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   AppSettings,
   DrumType,
@@ -19,12 +20,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { useMultiplayerGame, CoopHitEvent } from '../hooks/useMultiplayerGame';
+import { MultiplayerHUD } from '../components/MultiplayerHUD';
 
 interface RhythmGameScreenProps {
   challenge: RhythmChallenge;
   onFinishGame: (result: GameResult) => void;
   onNavigate: (screen: ScreenType) => void;
   settings: AppSettings;
+  roomSession?: {
+    roomName: string;
+    mode: 'versus' | 'together';
+    roomId?: string;
+    players?: { id: string; name: string; isHost?: boolean }[];
+    isHost?: boolean;
+  } | null;
 }
 
 interface ChallengeStats {

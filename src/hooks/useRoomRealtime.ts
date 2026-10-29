@@ -9,7 +9,7 @@ interface UseRoomRealtimeProps {
   roomName: string;
   user: { id: string; name: string };
   isInitialHost: boolean;
-  onGameStart?: (challenge: RhythmChallenge, session: { roomName: string; mode: 'versus' | 'together'; roomId: string }) => void;
+  onGameStart?: (challenge: RhythmChallenge, session: { roomName: string; mode: 'versus' | 'together'; roomId: string; players?: RoomPlayer[]; isHost?: boolean }) => void;
   onRemoteSettingsChange?: (update: { challengeId?: string; mode?: 'versus' | 'together' }) => void;
 }
 
@@ -44,6 +44,8 @@ export function useRoomRealtime({
               roomName: payload.roomName || roomName,
               mode: payload.mode || 'versus',
               roomId,
+              players: payload.players || [],
+              isHost: user.id === payload.hostId,
             });
           } else if (type === 'ROOM_UPDATE') {
             onRemoteSettingsChange?.(payload);
@@ -124,6 +126,8 @@ export function useRoomRealtime({
           roomName: payload.roomName || roomName,
           mode: payload.mode || 'versus',
           roomId,
+          players: payload.players || [],
+          isHost: user.id === payload.hostId,
         });
       }
     });
@@ -249,12 +253,17 @@ export function useRoomRealtime({
   );
 
   const broadcastStartGame = useCallback(
-    async (challenge: RhythmChallenge, mode: 'versus' | 'together') => {
+    async (challenge: RhythmChallenge, mode: 'versus' | 'together', playersList?: RoomPlayer[]) => {
+      const activePlayers = playersList && playersList.length > 0 ? playersList : (players.length > 0 ? players : [
+        { id: user.id, name: user.name, isHost: true, ready: true, joinedAt: new Date().toISOString() }
+      ]);
       const payload = {
         challenge,
         mode,
         roomName,
         roomId,
+        players: activePlayers,
+        hostId: user.id,
       };
 
       if (channelRef.current) {
@@ -278,9 +287,15 @@ export function useRoomRealtime({
         } catch {}
       }
 
-      onGameStart?.(challenge, { roomName, mode, roomId });
+      onGameStart?.(challenge, {
+        roomName,
+        mode,
+        roomId,
+        players: activePlayers,
+        isHost: true,
+      });
     },
-    [roomName, roomId, onGameStart]
+    [roomName, roomId, onGameStart, players, user.id, user.name]
   );
 
   const broadcastRoomUpdate = useCallback(
