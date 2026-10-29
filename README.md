@@ -13,7 +13,7 @@ Toàn bộ nhận diện bàn tay và xử lý âm thanh được thực hiện 
 - Chế độ **Rhythm Challenge** gồm 4 bài luyện từng bước và 3 bài nhạc gốc: **Neon Drive** (96 BPM), **Sunset Groove** (112 BPM), **Midnight Rush** (132 BPM).
 - Thư viện nhạc có tìm kiếm, lọc thể loại, các mục Khám phá / Nhạc của tôi / Luyện trống; trang bài hát cho chọn độ khó, nghe trước và xem nốt theo từng đoạn.
 - Hai bản nhạc thật đi kèm: Greensleeves và Ode to Joy. Bản đồ nốt của hai bản thu là dữ liệu minh họa cho prototype, chưa được phân tích tự động. Nguồn và giấy phép nằm trong `public/audio/ATTRIBUTION.md`.
-- Luồng thêm nhạc: chọn file → cắt còn tối đa 2 phút đầu → backend dùng Demucs và librosa phân tích → kéo nốt trên timeline để chỉnh thời điểm → lưu chart và audio đã cắt vào IndexedDB. File đầu vào tối đa 50 MB / 10 phút.
+- Luồng thêm nhạc: chọn file → cắt còn tối đa 20 giây đầu → backend dùng Demucs và librosa phân tích → kéo nốt trên timeline để chỉnh thời điểm → lưu chart và audio đã cắt vào IndexedDB. File đầu vào tối đa 50 MB / 10 phút.
 - Bài nhạc có giai điệu, hợp âm, bass và nhịp trống hướng dẫn; chấm Perfect/Good/Miss theo thời gian phát thực tế, có tạm dừng và tiếp tục.
 - Bình luận trên bài chia sẻ ở profile và trang riêng `/posts/:clipId`.
 - Giao diện chia sẻ lên Facebook, Instagram và X/Twitter: chọn nền tảng, xem ảnh kết quả, nội dung và link bài đăng. Các nút chia sẻ/tải ảnh/sao chép hiện mô phỏng tương tác, chưa mở nền tảng hoặc đăng nội dung thật.
@@ -28,7 +28,7 @@ Toàn bộ nhận diện bàn tay và xử lý âm thanh được thực hiện 
 
 Backend Python chỉ dùng cho luồng phân tích bài hát tải lên. Phần còn lại của ứng dụng vẫn chạy ở frontend; file sau khi cắt và chart được lưu cục bộ trong IndexedDB.
 
-Nhạc mẫu của Virtual Drum dùng bản đồ nốt được chuẩn bị từ dữ liệu bài mẫu. Bài tải lên được phân tích tối đa 2 phút đầu và có thể chỉnh thời điểm các cú đánh trước khi lưu.
+Nhạc mẫu của Virtual Drum dùng bản đồ nốt được chuẩn bị từ dữ liệu bài mẫu. Bài tải lên được phân tích tối đa 20 giây đầu và có thể chỉnh thời điểm các cú đánh trước khi lưu.
 
 Dữ liệu phía giao diện gồm metadata bài hát, file nhạc, các đoạn (thời điểm bắt đầu/kết thúc), và ba bản đồ nốt theo độ khó (loại trống, thời điểm đánh). Khi có backend, có thể thay phần fixture bằng dữ liệu phân tích mà giữ luồng thư viện → trang bài hát → chơi → kết quả.
 

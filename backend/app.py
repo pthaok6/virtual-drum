@@ -15,7 +15,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 MAX_BYTES = 50 * 1024 * 1024
-ANALYSIS_SECONDS = int(os.getenv("ANALYSIS_SECONDS", "30"))
+ANALYSIS_SECONDS = int(os.getenv("ANALYSIS_SECONDS", "20"))
 ANALYSIS_SAMPLE_RATE = 44100
 ALLOWED_SUFFIXES = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac", ".webm"}
 
@@ -78,7 +78,7 @@ def analyze(file: UploadFile = File(...)) -> dict:
     try:
         with tempfile.TemporaryDirectory(prefix="virtual-drum-") as work_dir:
             input_path = Path(work_dir) / f"upload{suffix}"
-            analysis_path = Path(work_dir) / "first-two-minutes.wav"
+            analysis_path = Path(work_dir) / "analysis-window.wav"
             drum_path = Path(work_dir) / "drums.wav"
             backing_path = Path(work_dir) / "no_drums.wav"
             input_path.write_bytes(contents)
@@ -123,7 +123,7 @@ def analyze(file: UploadFile = File(...)) -> dict:
             backing_pcm = (backing_audio * 32767).astype("<i2").tobytes()
         duration = float(len(audio) / sample_rate)
         if duration < 3 or duration > ANALYSIS_SECONDS + 1:
-            raise HTTPException(422, "Could not analyze the first two minutes of this audio.")
+            raise HTTPException(422, f"Could not analyze the first {ANALYSIS_SECONDS} seconds of this audio.")
         tempo, beat_frames = librosa.beat.beat_track(y=audio, sr=sample_rate)
         bpm = float(np.asarray(tempo).reshape(-1)[0])
         if not np.isfinite(bpm) or bpm <= 0:

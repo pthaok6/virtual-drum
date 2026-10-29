@@ -27,7 +27,7 @@ services:
       - key: USE_DEMUCS
         value: "false" # false uses fast Librosa HPSS (<3s, <60MB RAM) preventing Render 512MB OOM crash
       - key: ANALYSIS_SECONDS
-        value: "60"
+        value: "20"
 
   # ==========================================
   # ALTERNATIVE: Native Python Runtime

@@ -9,6 +9,8 @@ export interface SongAnalysis {
   backingTrack: File;
 }
 
+export const MAX_ANALYSIS_SECONDS = 20;
+
 function pcm16MonoWav(pcm: ArrayBuffer, sampleRate: number): ArrayBuffer {
   const wav = new ArrayBuffer(44 + pcm.byteLength);
   const view = new DataView(wav);
@@ -22,7 +24,7 @@ function pcm16MonoWav(pcm: ArrayBuffer, sampleRate: number): ArrayBuffer {
   return wav;
 }
 
-export async function trimAudioFile(file: File, maxSeconds = 120): Promise<File> {
+export async function trimAudioFile(file: File, maxSeconds = MAX_ANALYSIS_SECONDS): Promise<File> {
   const context = new AudioContext();
   try {
     const decoded = await context.decodeAudioData(await file.arrayBuffer());
