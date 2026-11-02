@@ -17,9 +17,11 @@ export interface OpponentState {
   accuracy: number;
   currentNoteIndex: number;
   totalNotes: number;
-  lastHit?: { drum: DrumType; rating: HitRating } | null;
+  lastHit?: { drum: DrumType; rating: HitRating; points?: number } | null;
   activeHits?: Record<DrumType, { isHit: boolean; rating?: HitRating }>;
+  recentHits?: { id: string; drum: DrumType; rating: HitRating; points?: number }[];
   finished?: boolean;
+  disconnected?: boolean;
 }
 
 export interface CoopHitEvent {
@@ -50,6 +52,7 @@ export function useMultiplayerGame({
   onRemoteCoopHit,
 }: UseMultiplayerGameProps) {
   const [opponent, setOpponent] = useState<OpponentState | null>(null);
+  const [partnerDisconnected, setPartnerDisconnected] = useState(false);
   const [teamScore, setTeamScore] = useState(0);
   const [teamCombo, setTeamCombo] = useState(0);
 
@@ -61,6 +64,35 @@ export function useMultiplayerGame({
     id: 'opponent',
     name: 'Player 2',
   };
+
+  const updateOpponentWithHit = useCallback((payload: any) => {
+    setOpponent((prev) => {
+      const recent = prev?.recentHits ? [...prev.recentHits] : [];
+      if (payload.lastHit) {
+        recent.unshift({
+          id: `${Date.now()}-${Math.random()}`,
+          drum: payload.lastHit.drum,
+          rating: payload.lastHit.rating,
+          points: payload.lastHit.points ?? (payload.lastHit.rating === 'perfect' ? 300 : payload.lastHit.rating === 'good' ? 150 : 0),
+        });
+        if (recent.length > 4) recent.pop();
+      }
+      return {
+        id: payload.senderId,
+        name: payload.senderName || effectiveOpponent.name,
+        score: payload.score ?? 0,
+        combo: payload.combo ?? 0,
+        accuracy: payload.accuracy ?? 100,
+        currentNoteIndex: payload.currentNoteIndex ?? 0,
+        totalNotes: payload.totalNotes ?? 1,
+        lastHit: payload.lastHit,
+        activeHits: payload.activeHits,
+        recentHits: recent,
+        finished: payload.finished,
+        disconnected: false,
+      };
+    });
+  }, [effectiveOpponent.name]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -77,26 +109,17 @@ export function useMultiplayerGame({
           if (payload?.senderId === currentUserId) return; // ignore self
 
           if (type === 'VERSUS_UPDATE') {
-            setOpponent({
-              id: payload.senderId,
-              name: payload.senderName || effectiveOpponent.name,
-              score: payload.score ?? 0,
-              combo: payload.combo ?? 0,
-              accuracy: payload.accuracy ?? 100,
-              currentNoteIndex: payload.currentNoteIndex ?? 0,
-              totalNotes: payload.totalNotes ?? 1,
-              lastHit: payload.lastHit,
-              activeHits: payload.activeHits,
-              finished: payload.finished,
-            });
+            updateOpponentWithHit(payload);
           } else if (type === 'COOP_HIT') {
-            // Play opponent's drum sound!
             if (payload.drum) {
               audioEngine.playDrum(payload.drum);
             }
             if (payload.teamScore !== undefined) setTeamScore(payload.teamScore);
             if (payload.teamCombo !== undefined) setTeamCombo(payload.teamCombo);
             onRemoteCoopHit?.(payload);
+          } else if (type === 'PARTNER_LEAVE') {
+            setPartnerDisconnected(true);
+            setOpponent((prev) => prev ? { ...prev, disconnected: true } : null);
           }
         };
       }
@@ -109,18 +132,7 @@ export function useMultiplayerGame({
 
       channel.on('broadcast', { event: 'versus_update' }, ({ payload }: any) => {
         if (!payload || payload.senderId === currentUserId) return;
-        setOpponent({
-          id: payload.senderId,
-          name: payload.senderName || effectiveOpponent.name,
-          score: payload.score ?? 0,
-          combo: payload.combo ?? 0,
-          accuracy: payload.accuracy ?? 100,
-          currentNoteIndex: payload.currentNoteIndex ?? 0,
-          totalNotes: payload.totalNotes ?? 1,
-          lastHit: payload.lastHit,
-          activeHits: payload.activeHits,
-          finished: payload.finished,
-        });
+        updateOpponentWithHit(payload);
       });
 
       channel.on('broadcast', { event: 'coop_hit' }, ({ payload }: any) => {
@@ -131,6 +143,12 @@ export function useMultiplayerGame({
         if (payload.teamScore !== undefined) setTeamScore(payload.teamScore);
         if (payload.teamCombo !== undefined) setTeamCombo(payload.teamCombo);
         onRemoteCoopHit?.(payload);
+      });
+
+      channel.on('broadcast', { event: 'partner_leave' }, ({ payload }: any) => {
+        if (!payload || payload.senderId === currentUserId) return;
+        setPartnerDisconnected(true);
+        setOpponent((prev) => prev ? { ...prev, disconnected: true } : null);
       });
 
       channel.subscribe();
@@ -144,7 +162,7 @@ export function useMultiplayerGame({
         channelRef.current = null;
       }
     };
-  }, [roomId, currentUserId, effectiveOpponent.name, onRemoteCoopHit]);
+  }, [roomId, currentUserId, effectiveOpponent.name, onRemoteCoopHit, updateOpponentWithHit]);
 
   // Send update in Versus mode
   const sendVersusProgress = useCallback(
@@ -222,14 +240,35 @@ export function useMultiplayerGame({
     [roomId, currentUserId, currentUserName]
   );
 
+  const sendLeaveMatch = useCallback(() => {
+    if (!roomId) return;
+    const payload = { senderId: currentUserId };
+    if (broadcastChannelRef.current) {
+      try {
+        broadcastChannelRef.current.postMessage({ type: 'PARTNER_LEAVE', payload });
+      } catch {}
+    }
+    if (channelRef.current) {
+      try {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'partner_leave',
+          payload,
+        });
+      } catch {}
+    }
+  }, [roomId, currentUserId]);
+
   return {
     opponent,
+    partnerDisconnected,
     teamScore,
     teamCombo,
     setTeamScore,
     setTeamCombo,
     sendVersusProgress,
     sendCoopHit,
+    sendLeaveMatch,
   };
 }
 

@@ -32,7 +32,7 @@ export function Leaderboard({ onFollow, following }: { onFollow: (id: string) =>
   const { t, locale } = useLanguage();
   return <section id="leaderboard" className="mt-14 w-full scroll-mt-24">
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-400">{t("Community")}</p><h2 className="mt-1 text-2xl font-black text-white">{t("Leaderboard")}</h2><p className="mt-1 text-sm text-zinc-400">{t("This week's top scores · demo data")}</p></div><Link to="/rooms" className="text-sm font-semibold text-rose-300 hover:text-rose-200">{t("Join a room")} <ArrowRight className="inline h-4 w-4" /></Link></div>
-    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60">{[...USERS].sort((a,b) => b.totalScore-a.totalScore).map((user, index) => <div key={user.id} className="flex items-center gap-3 border-b border-zinc-800/70 p-3 last:border-0 sm:gap-5 sm:p-4"><span className={`w-8 text-center text-lg font-black ${index === 0 ? 'text-amber-400' : 'text-zinc-500'}`}>{index === 0 ? <Crown className="mx-auto h-5 w-5" /> : String(index + 1).padStart(2, '0')}</span><Avatar user={user} size="h-10 w-10" /><div className="min-w-0 flex-1"><Link to={`/profile/${user.id}`} className="font-bold text-white hover:text-rose-300">{t(user.name)}</Link><p className="truncate text-xs text-zinc-500">{user.handle}</p></div><span className="font-mono text-sm font-bold text-amber-300 sm:text-base">{user.totalScore.toLocaleString(locale)}</span>{user.id !== 'you' && <button className="hidden rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 sm:block" onClick={() => onFollow(user.id)}>{following.includes(user.id) ? t("Following") : t("Follow")}</button>}</div>)}</div>
+    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60">{[...USERS].sort((a, b) => b.totalScore - a.totalScore).map((user, index) => <div key={user.id} className="flex items-center gap-3 border-b border-zinc-800/70 p-3 last:border-0 sm:gap-5 sm:p-4"><span className={`w-8 text-center text-lg font-black ${index === 0 ? 'text-amber-400' : 'text-zinc-500'}`}>{index === 0 ? <Crown className="mx-auto h-5 w-5" /> : String(index + 1).padStart(2, '0')}</span><Avatar user={user} size="h-10 w-10" /><div className="min-w-0 flex-1"><Link to={`/profile/${user.id}`} className="font-bold text-white hover:text-rose-300">{t(user.name)}</Link><p className="truncate text-xs text-zinc-500">{user.handle}</p></div><span className="font-mono text-sm font-bold text-amber-300 sm:text-base">{user.totalScore.toLocaleString(locale)}</span>{user.id !== 'you' && <button className="hidden rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 sm:block" onClick={() => onFollow(user.id)}>{following.includes(user.id) ? t("Following") : t("Follow")}</button>}</div>)}</div>
   </section>;
 }
 
@@ -166,7 +166,7 @@ export function ReplayScreen({ clips, onShareImage }: { clips: ReplayClip[]; onS
   if (!clip) return <Missing />;
   const user = USERS.find((entry) => entry.id === clip.userId)!;
   const event = clip.events[Math.max(0, index - 1)];
-  return <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6"><Link to={`/profile/${clip.userId}`} className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white"><ArrowLeft className="h-4 w-4" /> {t("Back to profile")}</Link><PageHeading eyebrow={t("Challenge replay")} title={clipTitle(clip)} description={`${t(user.name)} · ${t(challenges.find((challenge) => challenge.id === clip.challengeId)?.title ?? 'Challenge')} · ${clipDate(clip.date)}`} /><div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]"><div className={card}><div className="relative flex min-h-72 flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.15),transparent_60%)] p-6"><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-rose-300"><Radio className="h-4 w-4" /> {t("Drum performance replay")}</div><div className="grid grid-cols-5 gap-2">{['hihat','tom','crash','snare','kick'].map((drum) => <div key={drum} className={`flex aspect-square items-center justify-center rounded-xl border text-[10px] font-bold uppercase sm:text-sm ${event?.drum === drum && index > 0 ? 'scale-105 border-rose-400 bg-rose-500/30 text-white shadow-lg shadow-rose-500/30' : 'border-zinc-700 bg-zinc-900 text-zinc-500'}`}>{t(drum === 'hihat' ? 'Hi-Hat' : drum[0].toUpperCase() + drum.slice(1))}</div>)}</div><div className="text-center text-sm text-zinc-400">{index > 0 ? `${t(event.drum === 'hihat' ? 'Hi-Hat' : event.drum[0].toUpperCase() + event.drum.slice(1)).toUpperCase()} · ${event.rating === 'miss' ? t("Miss") : t("Perfect")}` : t("Press play to hear each beat again")}</div></div><div className="mt-5 flex items-center gap-4"><button onClick={() => { if (index >= clip.events.length) setIndex(0); setPlaying(!playing); }} className={primary}>{playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{playing ? t("Pause") : t("Play replay")}</button><input aria-label={t("Replay progress")} type="range" min={0} max={clip.events.length} value={index} onChange={(event) => { setIndex(Number(event.target.value)); setPlaying(false); }} className="w-full accent-rose-500" /><span className="whitespace-nowrap text-xs text-zinc-400">{index}/{clip.events.length}</span></div><p className="mt-3 text-xs text-zinc-500">{clip.id.startsWith('demo-') ? t("Demo replay data from a sample challenge.") : t("Replay the hits recorded in this browser session.")}</p></div><div className={card}><h2 className="text-lg font-bold text-white">{t("Performance results")}</h2><div className="mt-5 grid grid-cols-2 gap-4">{[[t("Score"), clip.score.toLocaleString(locale)], [t("Accuracy"), `${clip.accuracy}%`], [t("Rank"), clip.rank], [t("Hits"), String(clip.events.length)]].map(([label, value]) => <div key={label} className="rounded-xl bg-zinc-950 p-4"><p className="text-xs text-zinc-500">{label}</p><strong className="mt-1 block text-xl text-white">{value}</strong></div>)}</div>{clip.shared ? <button type="button" onClick={() => onShareImage(clip.id)} className={`${secondary} mt-6 w-full`}><Share2 className="h-4 w-4" /> {t("Share image")}</button> : clip.userId === 'you' ? <Link to={`/share/${clip.id}`} className={`${secondary} mt-6 w-full`}><Share2 className="h-4 w-4" /> {t("Share to profile")}</Link> : null}</div></div></div>;
+  return <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6"><Link to={`/profile/${clip.userId}`} className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white"><ArrowLeft className="h-4 w-4" /> {t("Back to profile")}</Link><PageHeading eyebrow={t("Challenge replay")} title={clipTitle(clip)} description={`${t(user.name)} · ${t(challenges.find((challenge) => challenge.id === clip.challengeId)?.title ?? 'Challenge')} · ${clipDate(clip.date)}`} /><div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]"><div className={card}><div className="relative flex min-h-72 flex-col justify-between overflow-hidden rounded-2xl border border-zinc-800 bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.15),transparent_60%)] p-6"><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-rose-300"><Radio className="h-4 w-4" /> {t("Drum performance replay")}</div><div className="grid grid-cols-5 gap-2">{['hihat', 'tom', 'crash', 'snare', 'kick'].map((drum) => <div key={drum} className={`flex aspect-square items-center justify-center rounded-xl border text-[10px] font-bold uppercase sm:text-sm ${event?.drum === drum && index > 0 ? 'scale-105 border-rose-400 bg-rose-500/30 text-white shadow-lg shadow-rose-500/30' : 'border-zinc-700 bg-zinc-900 text-zinc-500'}`}>{t(drum === 'hihat' ? 'Hi-Hat' : drum[0].toUpperCase() + drum.slice(1))}</div>)}</div><div className="text-center text-sm text-zinc-400">{index > 0 ? `${t(event.drum === 'hihat' ? 'Hi-Hat' : event.drum[0].toUpperCase() + event.drum.slice(1)).toUpperCase()} · ${event.rating === 'miss' ? t("Miss") : t("Perfect")}` : t("Press play to hear each beat again")}</div></div><div className="mt-5 flex items-center gap-4"><button onClick={() => { if (index >= clip.events.length) setIndex(0); setPlaying(!playing); }} className={primary}>{playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{playing ? t("Pause") : t("Play replay")}</button><input aria-label={t("Replay progress")} type="range" min={0} max={clip.events.length} value={index} onChange={(event) => { setIndex(Number(event.target.value)); setPlaying(false); }} className="w-full accent-rose-500" /><span className="whitespace-nowrap text-xs text-zinc-400">{index}/{clip.events.length}</span></div><p className="mt-3 text-xs text-zinc-500">{clip.id.startsWith('demo-') ? t("Demo replay data from a sample challenge.") : t("Replay the hits recorded in this browser session.")}</p></div><div className={card}><h2 className="text-lg font-bold text-white">{t("Performance results")}</h2><div className="mt-5 grid grid-cols-2 gap-4">{[[t("Score"), clip.score.toLocaleString(locale)], [t("Accuracy"), `${clip.accuracy}%`], [t("Rank"), clip.rank], [t("Hits"), String(clip.events.length)]].map(([label, value]) => <div key={label} className="rounded-xl bg-zinc-950 p-4"><p className="text-xs text-zinc-500">{label}</p><strong className="mt-1 block text-xl text-white">{value}</strong></div>)}</div>{clip.shared ? <button type="button" onClick={() => onShareImage(clip.id)} className={`${secondary} mt-6 w-full`}><Share2 className="h-4 w-4" /> {t("Share image")}</button> : clip.userId === 'you' ? <Link to={`/share/${clip.id}`} className={`${secondary} mt-6 w-full`}><Share2 className="h-4 w-4" /> {t("Share to profile")}</Link> : null}</div></div></div>;
 }
 
 export function ShareScreen({ clips, latestResult, onPublish }: { clips: ReplayClip[]; latestResult: GameResult | null; onPublish: (clip: ReplayClip) => void }) {
@@ -203,6 +203,7 @@ export function RoomsScreen() {
   const [joinCode, setJoinCode] = useState('');
   const [selectedChallengeId, setSelectedChallengeId] = useState('beginner-beat');
   const [selectedMode, setSelectedMode] = useState<'versus' | 'together'>('versus');
+  const [selectedVisibility, setSelectedVisibility] = useState<'public' | 'private'>('public');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -216,17 +217,20 @@ export function RoomsScreen() {
     return () => { active = false; };
   }, []);
 
+  const selectedChallenge = challenges.find((c) => c.id === selectedChallengeId) || challenges[0];
+
   const handleCreateRoom = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!roomName.trim()) return;
-    const challenge = challenges.find((c) => c.id === selectedChallengeId);
     const room = await createRoom({
       name: roomName.trim(),
       hostName: profile?.displayName || 'You',
       hostId: profile?.id || 'you',
       challengeId: selectedChallengeId,
-      challengeTitle: challenge?.title || 'Beginner Beat',
+      challengeTitle: selectedChallenge?.title || 'Beginner Beat',
       mode: selectedMode,
+      visibility: selectedVisibility,
+      capacity: 2,
     });
     navigate(`/rooms/${room.id}?name=${encodeURIComponent(room.name)}`);
   };
@@ -241,60 +245,199 @@ export function RoomsScreen() {
 
   return <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
     <PageHeading eyebrow={t("Multiplayer")} title={t("Play together")} description={t("Choose a room to view its lobby or create your own demo room.")} />
-    
-    <div className="mb-8 grid gap-4 lg:grid-cols-2">
+
+    <div className="mb-8 grid gap-5 lg:grid-cols-2">
       {/* Create Room Form */}
       <div className={card}>
         <div className="mb-4 flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/15 text-rose-400">
             <Plus className="h-5 w-5" />
           </div>
-          <h2 className="text-base font-bold text-white">{t("Create room")}</h2>
+          <div>
+            <h2 className="text-base font-bold text-white">{t("Create room")}</h2>
+            <p className="text-xs text-zinc-400">{t("Set up your multiplayer match and invite a friend")}</p>
+          </div>
         </div>
-        <form onSubmit={handleCreateRoom} className="space-y-3">
+
+        <form onSubmit={handleCreateRoom} className="space-y-4">
           <label className="block text-xs font-semibold text-zinc-300">
             {t("New room name")}
-            <input required maxLength={32} value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder={t("New room name")} aria-label={t("New room name")} className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-rose-400" />
+            <input
+              required
+              maxLength={32}
+              value={roomName}
+              onChange={(event) => setRoomName(event.target.value)}
+              placeholder={t("e.g. Neon Drum Arena")}
+              className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-rose-400"
+            />
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300">{t("Song or challenge")}</label>
-              <select value={selectedChallengeId} onChange={(e) => setSelectedChallengeId(e.target.value)} className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white outline-none focus:border-rose-400">
-                {challenges.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300">{t("Game mode")}</label>
-              <select value={selectedMode} onChange={(e) => setSelectedMode(e.target.value as any)} className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white outline-none focus:border-rose-400">
-                <option value="versus">{t("Challenge match")}</option>
-                <option value="together">{t("Play one song together")}</option>
-              </select>
+
+          {/* Game Mode Selection */}
+          <div>
+            <span className="block text-xs font-semibold text-zinc-300 mb-1.5">{t("Game mode")}</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedMode('versus')}
+                className={`rounded-xl border p-3 text-left transition ${
+                  selectedMode === 'versus'
+                    ? 'border-rose-400 bg-rose-500/15 text-white'
+                    : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold text-xs text-rose-300">
+                  <Swords className="h-4 w-4" />
+                  <span>{t("Competitive")}</span>
+                </div>
+                <p className="mt-1 text-[11px] leading-tight text-zinc-400">
+                  {t("Both play simultaneously, compare live scores.")}
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedMode('together')}
+                className={`rounded-xl border p-3 text-left transition ${
+                  selectedMode === 'together'
+                    ? 'border-amber-400 bg-amber-500/15 text-white'
+                    : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold text-xs text-amber-300">
+                  <Music className="h-4 w-4" />
+                  <span>{t("Turn-based")}</span>
+                </div>
+                <p className="mt-1 text-[11px] leading-tight text-zinc-400">
+                  {t("Take turns every 10 notes on a shared beat map.")}
+                </p>
+              </button>
             </div>
           </div>
-          <button className={`${primary} mt-2 w-full`}><Plus className="h-4 w-4" /> {t("Create room")}</button>
+
+          {/* Visibility Selection */}
+          <div>
+            <span className="block text-xs font-semibold text-zinc-300 mb-1.5">{t("Room Visibility")}</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedVisibility('public')}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                  selectedVisibility === 'public'
+                    ? 'border-emerald-400 bg-emerald-500/15 text-white'
+                    : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700'
+                }`}
+              >
+                <Radio className="h-3.5 w-3.5 text-emerald-400" />
+                <span>{t("Public (Listed)")}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedVisibility('private')}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                  selectedVisibility === 'private'
+                    ? 'border-cyan-400 bg-cyan-500/15 text-white'
+                    : 'border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700'
+                }`}
+              >
+                <LockKeyhole className="h-3.5 w-3.5 text-cyan-400" />
+                <span>{t("Private (Invite only)")}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Song Selection */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">{t("Select Song / Beat Map")}</label>
+            <select
+              value={selectedChallengeId}
+              onChange={(e) => setSelectedChallengeId(e.target.value)}
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-white outline-none focus:border-rose-400"
+            >
+              {challenges.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title} · {c.bpm} BPM · {t(c.difficulty)} ({c.durationSeconds}s)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Room Configuration Preview */}
+          <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/70 p-3 text-xs">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-rose-400 block mb-1.5">
+              {t("ROOM CONFIGURATION PREVIEW")}
+            </span>
+            <div className="grid grid-cols-2 gap-2 text-zinc-300">
+              <div>
+                <span className="text-zinc-500 block text-[10px]">{t("Mode:")}</span>
+                <strong className="text-white">
+                  {selectedMode === 'versus' ? t("Competitive (1v1)") : t("Turn-based (10 notes)")}
+                </strong>
+              </div>
+              <div>
+                <span className="text-zinc-500 block text-[10px]">{t("Visibility:")}</span>
+                <strong className="text-white">
+                  {selectedVisibility === 'public' ? t("Public") : t("Private")}
+                </strong>
+              </div>
+              <div>
+                <span className="text-zinc-500 block text-[10px]">{t("Song:")}</span>
+                <strong className="truncate block text-amber-300">{selectedChallenge?.title}</strong>
+              </div>
+              <div>
+                <span className="text-zinc-500 block text-[10px]">{t("Capacity:")}</span>
+                <strong className="text-white">2 {t("Players")}</strong>
+              </div>
+            </div>
+          </div>
+
+          <button className={`${primary} mt-2 w-full`}>
+            <Plus className="h-4 w-4" /> {t("Create room")}
+          </button>
         </form>
       </div>
 
       {/* Join by Code */}
-      <div className={card}>
-        <div className="mb-4 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
-            <Users className="h-5 w-5" />
+      <div className="space-y-4">
+        <div className={card}>
+          <div className="mb-4 flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
+              <Users className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">{t("Join by Room Code")}</h2>
+              <p className="text-xs text-zinc-400">{t("Enter a room ID or paste an invite link")}</p>
+            </div>
           </div>
-          <h2 className="text-base font-bold text-white">{t("Join by Room Code")}</h2>
+          <form onSubmit={handleJoinByCode} className="space-y-3">
+            <label className="block text-xs font-semibold text-zinc-300">
+              {t("Enter Room Code or Name")}
+              <input
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="e.g. room-abc12345 or full invite URL"
+                className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-rose-400"
+              />
+            </label>
+            <button disabled={!joinCode.trim()} className={`${secondary} mt-2 w-full disabled:opacity-40`}>
+              {t("Join")} <ArrowRight className="h-4 w-4" />
+            </button>
+          </form>
         </div>
-        <form onSubmit={handleJoinByCode} className="space-y-3">
-          <label className="block text-xs font-semibold text-zinc-300">
-            {t("Enter Room Code or Name")}
-            <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder="e.g. studio-night or room id" className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm text-white outline-none focus:border-rose-400" />
-          </label>
-          <button disabled={!joinCode.trim()} className={`${secondary} mt-2 w-full disabled:opacity-40`}>
-            {t("Join")} <ArrowRight className="h-4 w-4" />
-          </button>
-        </form>
-        <p className="mt-4 text-xs text-zinc-500 leading-relaxed">
-          {t("Real-time multiplayer lobbies powered by Supabase Realtime Presence & Broadcast.")}
-        </p>
+
+        {/* Live Multiplayer Features Card */}
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 text-xs text-zinc-400 space-y-2">
+          <div className="flex items-center gap-2 font-bold text-white">
+            <Sparkles className="h-4 w-4 text-amber-400" />
+            <span>{t("Realtime Multiplayer Features")}</span>
+          </div>
+          <p>
+            • <strong>{t("Competitive Mode:")}</strong> {t("Live split screen, watch opponent hits in real-time, real-time score comparison.")}
+          </p>
+          <p>
+            • <strong>{t("Turn-based Mode:")}</strong> {t("10-note turns synchronized to the song's beat map. Input locks on opponent turn. Real-time drum sound playback.")}
+          </p>
+        </div>
       </div>
     </div>
 
@@ -325,7 +468,7 @@ export function RoomsScreen() {
   </div>;
 }
 
-export function RoomScreen({ onStartGame }: { onStartGame: (challenge: RhythmChallenge, session: { roomName: string; mode: 'versus' | 'together'; roomId: string }) => void }) {
+export function RoomScreen({ onStartGame }: { onStartGame: (challenge: RhythmChallenge, session: { roomName: string; mode: 'versus' | 'together'; roomId: string; players?: RoomPlayer[]; isHost?: boolean }) => void }) {
   const { t } = useLanguage();
   const { roomId = 'my-room' } = useParams();
   const [searchParams] = useSearchParams();
@@ -388,7 +531,7 @@ export function RoomScreen({ onStartGame }: { onStartGame: (challenge: RhythmCha
 
   const handleStartGame = () => {
     if (!selectedChallenge) return;
-    realtime.broadcastStartGame(selectedChallenge, mode);
+    realtime.broadcastStartGame(selectedChallenge, mode, displayPlayers);
   };
 
   const handleSendChat = (e: React.FormEvent) => {
@@ -402,10 +545,10 @@ export function RoomScreen({ onStartGame }: { onStartGame: (challenge: RhythmCha
   const displayPlayers = realtime.players.length > 0
     ? realtime.players
     : (isOwn ? [{ id: 'you', name: currentUserName, isHost: true, ready: true, joinedAt: '' }] : [
-        { id: 'host', name: fallbackRoom?.host || 'Host', isHost: true, ready: true, joinedAt: '' },
-        ...(fallbackRoom?.players && fallbackRoom.players > 1 ? [{ id: 'linh', name: 'Linh Groove', isHost: false, ready: true, joinedAt: '' }] : []),
-        ...(fallbackRoom?.players && fallbackRoom.players > 2 ? [{ id: 'khoa', name: 'Khoa Drum', isHost: false, ready: false, joinedAt: '' }] : []),
-      ]);
+      { id: 'host', name: fallbackRoom?.host || 'Host', isHost: true, ready: true, joinedAt: '' },
+      ...(fallbackRoom?.players && fallbackRoom.players > 1 ? [{ id: 'linh', name: 'Linh Groove', isHost: false, ready: true, joinedAt: '' }] : []),
+      ...(fallbackRoom?.players && fallbackRoom.players > 2 ? [{ id: 'khoa', name: 'Khoa Drum', isHost: false, ready: false, joinedAt: '' }] : []),
+    ]);
 
   const canStart = isHost && Boolean(selectedChallenge);
 
@@ -428,15 +571,15 @@ export function RoomScreen({ onStartGame }: { onStartGame: (challenge: RhythmCha
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-white">{t("Players in room")}</h2>
-            <p className="mt-1 text-xs text-zinc-500">{t("Room host can start at any time")}</p>
+            <p className="mt-1 text-xs text-zinc-500">{t("1v1 Match · Room host can start when players are ready")}</p>
           </div>
           <span className="rounded-full bg-zinc-800 px-3 py-1 text-sm font-semibold text-zinc-300">
-            {displayPlayers.length}/4
+            {Math.min(2, displayPlayers.length)}/2
           </span>
         </div>
 
         <div className="mt-5 space-y-3">
-          {displayPlayers.map((player, index) => (
+          {displayPlayers.slice(0, 2).map((player, index) => (
             <div key={`${player.id}-${index}`} className="flex items-center gap-3 rounded-xl bg-zinc-950 p-3 border border-zinc-800/80">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-amber-500 font-bold text-zinc-950">
                 {player.name.slice(0, 1).toUpperCase()}
@@ -446,23 +589,35 @@ export function RoomScreen({ onStartGame }: { onStartGame: (challenge: RhythmCha
                   {player.name} {player.id === currentUserId && `(${t("You")})`}
                 </p>
                 <p className="text-[11px] text-zinc-400">
-                  {player.isHost ? t("Host") : (player.ready ? t("Ready") : t("Not ready"))}
+                  {player.isHost ? t("Host (Player 1)") : (player.ready ? t("Ready (Player 2)") : t("Not ready (Player 2)"))}
                 </p>
               </div>
               {player.isHost ? (
-                <Crown className="h-4 w-4 text-amber-400" />
+                <div className="flex items-center gap-1 text-amber-400 text-xs font-bold bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                  <Crown className="h-3.5 w-3.5 fill-amber-400" />
+                  <span>{t("Host")}</span>
+                </div>
               ) : (
                 <span className={`h-2.5 w-2.5 rounded-full ${player.ready ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
               )}
             </div>
           ))}
 
-          {Array.from({ length: Math.max(0, 4 - displayPlayers.length) }, (_, index) => (
-            <div key={index} className="flex items-center gap-3 rounded-xl border border-dashed border-zinc-800 p-3 text-sm text-zinc-500">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-zinc-600">+</span>
-              {t("Waiting for players...")}
+          {displayPlayers.length < 2 && (
+            <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 p-4 text-center">
+              <p className="text-xs text-zinc-400 mb-2.5 font-medium">
+                {t("Waiting for Challenger (Player 2)...")}
+              </p>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className={`${secondary} text-xs py-1.5 px-3 mx-auto`}
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? t("Link copied!") : t("Copy Invite Link to share")}
+              </button>
             </div>
-          ))}
+          )}
         </div>
 
         {!isOwn && (

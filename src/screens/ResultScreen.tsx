@@ -1,6 +1,6 @@
 import { useLanguage } from '@/i18n/LanguageProvider';
 import React, { useEffect } from 'react';
-import { GameResult, ScreenType } from '../types';
+import { GameResult } from '../types';
 import confetti from 'canvas-confetti';
 import {
   Trophy,
@@ -15,14 +15,24 @@ import {
   CheckCircle2,
   Share2,
   Image as ImageIcon,
+  Crown,
+  Swords,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
+interface OpponentResult {
+  name: string;
+  score: number;
+  accuracy: number;
+  combo: number;
+}
+
 interface ResultScreenProps {
   result: GameResult;
   roomSession?: { roomName: string; mode: 'versus' | 'together' } | null;
+  opponentResult?: OpponentResult | null;
   onPlayAgain: () => void;
   onChooseAnother: () => void;
   onBackToHome: () => void;
@@ -33,6 +43,7 @@ interface ResultScreenProps {
 export const ResultScreen: React.FC<ResultScreenProps> = ({
   result,
   roomSession,
+  opponentResult,
   onPlayAgain,
   onChooseAnother,
   onBackToHome,
@@ -193,6 +204,65 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           <p className="text-xs text-zinc-400">{feedback.body}</p>
         </CardContent>
       </Card>
+
+      {/* Multiplayer versus result comparison */}
+      {roomSession?.mode === 'versus' && opponentResult && (
+        <section className="mb-6 w-full rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Swords className="h-4 w-4 text-amber-400" />
+            <h2 className="text-sm font-bold text-white">{t('Match Result')}</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {/* My result */}
+            <div
+              className={`rounded-2xl p-4 border ${
+                result.score >= opponentResult.score
+                  ? 'border-amber-500/60 bg-amber-500/10'
+                  : 'border-zinc-800 bg-zinc-900/60'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 mb-2">
+                {result.score > opponentResult.score && <Crown className="h-4 w-4 text-amber-400 fill-amber-400" />}
+                <span className="text-xs font-bold text-zinc-300">{t('You')}</span>
+                {result.score > opponentResult.score && (
+                  <Badge className="ml-auto bg-amber-400 text-zinc-950 text-[10px] font-black px-1.5 py-0">{t('WINNER')}</Badge>
+                )}
+              </div>
+              <div className="text-3xl font-black text-white font-mono">{result.score.toLocaleString(locale)}</div>
+              <div className="mt-1.5 flex gap-2 text-xs text-zinc-400">
+                <span>{result.accuracy}% {t('Acc')}</span>
+                <span>·</span>
+                <span>{result.maxCombo}x {t('Combo')}</span>
+              </div>
+            </div>
+            {/* Opponent result */}
+            <div
+              className={`rounded-2xl p-4 border ${
+                opponentResult.score > result.score
+                  ? 'border-amber-500/60 bg-amber-500/10'
+                  : 'border-zinc-800 bg-zinc-900/60'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 mb-2">
+                {opponentResult.score > result.score && <Crown className="h-4 w-4 text-amber-400 fill-amber-400" />}
+                <span className="text-xs font-bold text-zinc-300 truncate">{opponentResult.name}</span>
+                {opponentResult.score > result.score && (
+                  <Badge className="ml-auto bg-amber-400 text-zinc-950 text-[10px] font-black px-1.5 py-0">{t('WINNER')}</Badge>
+                )}
+              </div>
+              <div className="text-3xl font-black text-white font-mono">{opponentResult.score.toLocaleString(locale)}</div>
+              <div className="mt-1.5 flex gap-2 text-xs text-zinc-400">
+                <span>{opponentResult.accuracy}% {t('Acc')}</span>
+                <span>·</span>
+                <span>{opponentResult.combo}x {t('Combo')}</span>
+              </div>
+            </div>
+          </div>
+          {result.score === opponentResult.score && (
+            <p className="mt-3 text-center text-sm font-bold text-zinc-400">{t('Scores are tied!')}</p>
+          )}
+        </section>
+      )}
 
       {result.sectionResults && result.sectionResults.length > 0 && <section className="mb-6 w-full rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5"><h2 className="mb-4 text-sm font-bold text-white">{t('Your rhythm by section')}</h2><div className="grid gap-3 sm:grid-cols-2">{result.sectionResults.map((section, index) => <div key={index} className="rounded-xl bg-zinc-950 p-3"><div className="flex justify-between text-xs"><span className="font-bold text-zinc-300">{t(section.label)}</span><strong className={section.accuracy >= 80 ? 'text-emerald-400' : 'text-amber-400'}>{section.accuracy}%</strong></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800"><div style={{ width: section.accuracy + '%' }} className="h-full rounded-full bg-gradient-to-r from-rose-500 to-amber-400" /></div><p className="mt-2 text-[10px] text-zinc-500">{t(section.accuracy >= 80 ? 'Great groove' : 'Keep practicing this section')}</p></div>)}</div></section>}
 

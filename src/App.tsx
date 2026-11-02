@@ -43,7 +43,14 @@ function AppContent() {
   const location = useLocation();
   const [selectedChallenge, setSelectedChallenge] = useState<RhythmChallenge>(CHALLENGES[0]);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
-  const [roomSession, setRoomSession] = useState<{ roomName: string; mode: 'versus' | 'together'; roomId?: string } | null>(null);
+  const [opponentResult, setOpponentResult] = useState<{ name: string; score: number; accuracy: number; combo: number } | null>(null);
+  const [roomSession, setRoomSession] = useState<{
+    roomName: string;
+    mode: 'versus' | 'together';
+    roomId?: string;
+    players?: { id: string; name: string; isHost?: boolean }[];
+    isHost?: boolean;
+  } | null>(null);
   const [latestClipId, setLatestClipId] = useState<string | null>(null);
   const [shareImageClipId, setShareImageClipId] = useState<string | null>(null);
   const [createdClips, setCreatedClips] = useState<ReplayClip[]>(() => readStored('virtual-drum-clips', []));
@@ -71,9 +78,13 @@ function AppContent() {
     if (screen === 'challenge-select') setRoomSession(null);
     navigate(paths[screen]);
   };
-  const handleFinishGame = (result: GameResult) => {
+  const handleFinishGame = (
+    result: GameResult,
+    oppResult?: { name: string; score: number; accuracy: number; combo: number } | null
+  ) => {
     const id = `local-${Date.now()}`;
     setGameResult(result);
+    setOpponentResult(oppResult ?? null);
     setLatestClipId(id);
     setCreatedClips((previous) => [{ id, userId: 'you', title: result.challenge.title, generatedTitle: true, challengeId: result.challenge.id, score: result.score, accuracy: result.accuracy, rank: result.rank, date: new Date().toISOString(), shared: false, events: result.replayEvents ?? [], ...(roomSession ? { roomName: roomSession.roomName, roomMode: roomSession.mode } : {}) }, ...previous]);
     navigate('/challenge/result');
@@ -90,8 +101,8 @@ function AppContent() {
       <Route path="/free-play" element={<FreePlayScreen onNavigate={handleNavigate} settings={settings} onUpdateSettings={handleUpdateSettings} onOpenSettings={() => setIsSettingsOpen(true)} />} />
       <Route path="/challenges" element={<ChallengeSelectScreen onViewSong={(id) => navigate('/songs/' + encodeURIComponent(id))} onAddSong={songLibrary.addSong} onRemoveSong={songLibrary.removeSong} storageMessage={songLibrary.storageMessage} onNavigate={handleNavigate} onSelectChallenge={setSelectedChallenge} />} />
       <Route path="/songs/:songId" element={<SongDetailScreen onSelectChallenge={setSelectedChallenge} onNavigate={handleNavigate} />} />
-      <Route path="/challenge/play" element={selectedChallenge.music ? <SongGameScreen key={selectedChallenge.id} challenge={selectedChallenge} onFinishGame={handleFinishGame} onNavigate={handleNavigate} settings={settings} /> : <RhythmGameScreen key={selectedChallenge.id} challenge={selectedChallenge} onFinishGame={handleFinishGame} onNavigate={handleNavigate} settings={settings} />} />
-      <Route path="/challenge/result" element={gameResult ? <ResultScreen result={gameResult} roomSession={roomSession} onPlayAgain={() => navigate('/challenge/play')} onChooseAnother={() => { setRoomSession(null); navigate('/challenges'); }} onBackToHome={() => { setRoomSession(null); navigate('/'); }} onShareImage={() => setShareImageClipId(latestClipId)} onShareProfile={() => navigate(`/share/${latestClipId}`)} /> : <Navigate to="/challenges" replace />} />
+      <Route path="/challenge/play" element={selectedChallenge.music ? <SongGameScreen key={selectedChallenge.id} challenge={selectedChallenge} onFinishGame={handleFinishGame} onNavigate={handleNavigate} settings={settings} roomSession={roomSession} /> : <RhythmGameScreen key={selectedChallenge.id} challenge={selectedChallenge} onFinishGame={handleFinishGame} onNavigate={handleNavigate} settings={settings} roomSession={roomSession} />} />
+      <Route path="/challenge/result" element={gameResult ? <ResultScreen result={gameResult} roomSession={roomSession} opponentResult={opponentResult} onPlayAgain={() => navigate('/challenge/play')} onChooseAnother={() => { setRoomSession(null); navigate('/challenges'); }} onBackToHome={() => { setRoomSession(null); navigate('/'); }} onShareImage={() => setShareImageClipId(latestClipId)} onShareProfile={() => navigate(`/share/${latestClipId}`)} /> : <Navigate to="/challenges" replace />} />
       <Route path="/login" element={<AuthScreen mode="login" onDemoAuth={() => navigate('/profile/you')} />} />
       <Route path="/register" element={<AuthScreen mode="register" onDemoAuth={() => navigate('/profile/you')} />} />
       <Route path="/profile/:userId" element={<ProfileScreen {...commentActions} clips={clips} following={following} onFollow={handleFollow} onShareImage={setShareImageClipId} />} />

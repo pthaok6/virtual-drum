@@ -12,6 +12,7 @@ export interface RoomData {
   challenge: string;
   challengeId?: string;
   mode?: 'versus' | 'together';
+  visibility?: 'public' | 'private';
   status: 'Waiting' | 'Playing' | 'Finished';
   color?: string;
   createdAt?: string;
@@ -72,7 +73,7 @@ export async function fetchRooms(): Promise<RoomData[]> {
 
   if (!isSupabaseConfigured || !supabase) {
     const merged = [...localCustom, ...demoList.filter(d => !localCustom.some(c => c.id === d.id))];
-    return merged;
+    return merged.filter(r => r.visibility !== 'private');
   }
 
   try {
@@ -83,7 +84,7 @@ export async function fetchRooms(): Promise<RoomData[]> {
 
     if (error || !data) {
       console.warn('Supabase fetchRooms fallback to local/demo:', error?.message);
-      return [...localCustom, ...demoList.filter(d => !localCustom.some(c => c.id === d.id))];
+      return [...localCustom, ...demoList.filter(d => !localCustom.some(c => c.id === d.id))].filter(r => r.visibility !== 'private');
     }
 
     const remoteRooms: RoomData[] = data.map((row: any) => ({
@@ -92,10 +93,11 @@ export async function fetchRooms(): Promise<RoomData[]> {
       host: row.host_name || 'Host',
       hostId: row.host_id || 'host',
       players: row.players_count ?? 1,
-      capacity: row.capacity ?? 4,
+      capacity: row.capacity ?? 2,
       challenge: row.challenge_title || 'Beginner Beat',
       challengeId: row.challenge_id || 'beginner-beat',
       mode: row.mode || 'versus',
+      visibility: row.visibility || 'public',
       status: (row.status === 'playing' ? 'Playing' : row.status === 'finished' ? 'Finished' : 'Waiting'),
       color: row.color || 'rose',
       createdAt: row.created_at,
@@ -103,10 +105,10 @@ export async function fetchRooms(): Promise<RoomData[]> {
 
     // Merge remote with demo rooms for a lively initial list
     const combined = [...remoteRooms, ...demoList.filter(d => !remoteRooms.some(r => r.id === d.id))];
-    return combined;
+    return combined.filter(r => r.visibility !== 'private');
   } catch (err) {
     console.warn('fetchRooms exception:', err);
-    return [...localCustom, ...demoList.filter(d => !localCustom.some(c => c.id === d.id))];
+    return [...localCustom, ...demoList.filter(d => !localCustom.some(c => c.id === d.id))].filter(r => r.visibility !== 'private');
   }
 }
 
@@ -117,6 +119,7 @@ export async function createRoom(params: {
   challengeId?: string;
   challengeTitle?: string;
   mode?: 'versus' | 'together';
+  visibility?: 'public' | 'private';
   capacity?: number;
 }): Promise<RoomData> {
   const roomId = 'room-' + createId();
@@ -126,10 +129,11 @@ export async function createRoom(params: {
     host: params.hostName || 'You',
     hostId: params.hostId || 'you',
     players: 1,
-    capacity: params.capacity || 4,
+    capacity: params.capacity || 2,
     challenge: params.challengeTitle || 'Beginner Beat',
     challengeId: params.challengeId || 'beginner-beat',
     mode: params.mode || 'versus',
+    visibility: params.visibility || 'public',
     status: 'Waiting',
     color: 'rose',
     createdAt: new Date().toISOString(),

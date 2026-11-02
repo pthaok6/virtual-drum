@@ -57,7 +57,16 @@ export function useRoomRealtime({
               return [...prev, payload];
             });
           } else if (type === 'PLAYER_LEAVE') {
-            setPlayers((prev) => prev.filter((p) => p.id !== payload.id));
+            setPlayers((prev) => {
+              const updated = prev.filter((p) => p.id !== payload.id);
+              if (updated.length > 0 && !updated.some((p) => p.isHost)) {
+                updated[0] = { ...updated[0], isHost: true };
+                if (updated[0].id === user.id) {
+                  setIsHost(true);
+                }
+              }
+              return updated;
+            });
           } else if (type === 'PLAYER_READY') {
             setPlayers((prev) =>
               prev.map((p) => (p.id === payload.id ? { ...p, ready: payload.ready } : p))
