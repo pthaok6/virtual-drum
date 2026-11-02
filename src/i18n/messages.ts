@@ -1,5 +1,6 @@
 export const vietnamese: Record<string, string> = {
   "Only the first 20 seconds are analyzed and saved.": "Chỉ 20 giây đầu được phân tích và lưu.",
+  "Only the first 60 seconds are analyzed and saved.": "Chỉ 60 giây (1 phút) đầu được phân tích và lưu.",
   "Songs are saved in this browser when storage is available. Files are trimmed to 20 seconds and saved in IndexedDB.": "Bài hát được lưu trong trình duyệt nếu còn dung lượng. File sẽ được cắt còn 20 giây và lưu trong IndexedDB.",
   "Audio is sent to the analysis backend to separate drums and create a beat chart. The backing track is saved in this browser.": "Âm thanh được gửi đến backend để tách tiếng trống và tạo biểu đồ nhịp. Bản nhạc đã tách trống được lưu trong trình duyệt.",
   "Separating drums and creating chart": "Đang tách tiếng trống và tạo biểu đồ nhịp",

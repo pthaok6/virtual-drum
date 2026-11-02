@@ -9,7 +9,7 @@ export interface SongAnalysis {
   backingTrack: File;
 }
 
-export const MAX_ANALYSIS_SECONDS = 20;
+export const MAX_ANALYSIS_SECONDS = 60;
 
 function pcm16MonoWav(pcm: ArrayBuffer, sampleRate: number): ArrayBuffer {
   const wav = new ArrayBuffer(44 + pcm.byteLength);
