@@ -27,11 +27,13 @@ function pcm16MonoWav(pcm: ArrayBuffer, sampleRate: number): ArrayBuffer {
 export async function trimAudioFile(file: File, maxSeconds = MAX_ANALYSIS_SECONDS): Promise<File> {
   const context = new AudioContext();
   try {
+    const isWav = file.type === 'audio/wav' || file.name.toLowerCase().endsWith('.wav');
     const decoded = await context.decodeAudioData(await file.arrayBuffer());
-    if (decoded.duration <= maxSeconds) return file;
+    if (isWav && decoded.duration <= maxSeconds) return file;
+    const targetSeconds = Math.min(decoded.duration, maxSeconds);
     const sampleRate = Math.min(44100, decoded.sampleRate);
     const channels = Math.min(2, decoded.numberOfChannels);
-    const frames = Math.floor(maxSeconds * sampleRate);
+    const frames = Math.floor(targetSeconds * sampleRate);
     const offline = new OfflineAudioContext(channels, frames, sampleRate);
     const source = offline.createBufferSource();
     source.buffer = decoded;

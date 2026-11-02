@@ -49,7 +49,8 @@ export function AddSongForm({ onAddSong }: { onAddSong: (song: SavedSong) => Pro
     try {
       const originalDuration = await readAudioDuration(file);
       if (token !== run.current) return;
-      const trimmedFile = originalDuration > MAX_ANALYSIS_SECONDS ? await trimAudioFile(file, MAX_ANALYSIS_SECONDS) : file;
+      const isWav = file.type === 'audio/wav' || file.name.toLowerCase().endsWith('.wav');
+      const trimmedFile = (originalDuration > MAX_ANALYSIS_SECONDS || !isWav) ? await trimAudioFile(file, MAX_ANALYSIS_SECONDS) : file;
       if (token !== run.current) return;
       setFile(trimmedFile);
       setStage('rhythm'); controller.current = new AbortController();

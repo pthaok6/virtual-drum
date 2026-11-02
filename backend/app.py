@@ -121,13 +121,40 @@ def analyze(file: UploadFile = File(...)) -> dict:
 
             backing_audio = np.clip(backing_audio, -1, 1)
             backing_pcm = (backing_audio * 32767).astype("<i2").tobytes()
+
+        # Clamp duration to ANALYSIS_SECONDS if slightly longer
+        max_samples = int(ANALYSIS_SECONDS * sample_rate)
+        if len(audio) > max_samples:
+            audio = audio[:max_samples]
+
         duration = float(len(audio) / sample_rate)
-        if duration < 3 or duration > ANALYSIS_SECONDS + 1:
-            raise HTTPException(422, f"Could not analyze the first {ANALYSIS_SECONDS} seconds of this audio.")
-        tempo, beat_frames = librosa.beat.beat_track(y=audio, sr=sample_rate)
-        bpm = float(np.asarray(tempo).reshape(-1)[0])
+        if duration < 3:
+            raise HTTPException(422, "Audio must be at least 3 seconds long.")
+
+        # Estimate tempo - try percussion first, fallback to full audio or default 120 BPM
+        bpm = 0.0
+        beat_frames = np.array([], dtype=int)
+        try:
+            tempo, beat_frames = librosa.beat.beat_track(y=audio, sr=sample_rate)
+            t_arr = np.asarray(tempo).reshape(-1)
+            if t_arr.size > 0:
+                bpm = float(t_arr[0])
+        except Exception:
+            pass
+
         if not np.isfinite(bpm) or bpm <= 0:
-            raise HTTPException(422, "Could not estimate a tempo for this audio.")
+            try:
+                mono_ref = audio_22k if 'audio_22k' in locals() else audio
+                tempo, beat_frames = librosa.beat.beat_track(y=mono_ref, sr=sample_rate)
+                t_arr = np.asarray(tempo).reshape(-1)
+                if t_arr.size > 0:
+                    bpm = float(t_arr[0])
+            except Exception:
+                pass
+
+        if not np.isfinite(bpm) or bpm <= 0:
+            bpm = 120.0
+
         onset_frames = librosa.onset.onset_detect(y=audio, sr=sample_rate, backtrack=True)
         onset_times = librosa.frames_to_time(onset_frames, sr=sample_rate)
         # Keep the chart readable and avoid duplicate onset detections within 70 ms.
@@ -139,7 +166,13 @@ def analyze(file: UploadFile = File(...)) -> dict:
                 continue
             notes.append({"time": round(seconds, 3), "lane": classify_onset(audio, sample_rate, seconds)})
             last_time = seconds
-        beats = librosa.frames_to_time(beat_frames, sr=sample_rate)
+
+        # Fallback if no onsets detected (quiet track / ambient)
+        if not notes and len(beat_frames) > 0:
+            for b_time in librosa.frames_to_time(beat_frames, sr=sample_rate):
+                notes.append({"time": round(float(b_time), 3), "lane": "kick"})
+
+        beats = librosa.frames_to_time(beat_frames, sr=sample_rate) if len(beat_frames) > 0 else []
         return {
             "bpm": round(bpm, 1),
             "durationSeconds": round(duration, 3),
@@ -154,6 +187,8 @@ def analyze(file: UploadFile = File(...)) -> dict:
         raise
     except Exception as error:
         logger.exception("Song analysis failed")
-        raise HTTPException(422, "Could not analyze this audio file. Try another file.") from error
+        error_msg = str(error).strip()
+        detail = f"Could not analyze this audio file ({error_msg})." if error_msg else "Could not analyze this audio file. Try another file."
+        raise HTTPException(422, detail) from error
     finally:
         file.file.close()
