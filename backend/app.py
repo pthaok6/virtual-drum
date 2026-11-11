@@ -66,6 +66,17 @@ def classify_onset(audio: np.ndarray, sample_rate: int, time: float) -> str:
     return "snare"
 
 
+def retain_strongest_snares(notes: list[dict], strengths: list[float]) -> list[dict]:
+    """Keep the strongest half of snare attacks, preserving every other note."""
+    if len(notes) != len(strengths):
+        raise ValueError("Each detected note must have one onset strength.")
+    snare_indices = [index for index, note in enumerate(notes) if note["lane"] == "snare"]
+    keep_count = (len(snare_indices) + 1) // 2
+    ranked = sorted(snare_indices, key=lambda index: (-strengths[index], notes[index]["time"], index))
+    kept = set(ranked[:keep_count])
+    return [note for index, note in enumerate(notes) if note["lane"] != "snare" or index in kept]
+
+
 @app.post("/api/analyze")
 def analyze(file: UploadFile = File(...)) -> dict:
     suffix = Path(file.filename or "song").suffix.lower()
@@ -155,17 +166,27 @@ def analyze(file: UploadFile = File(...)) -> dict:
         if not np.isfinite(bpm) or bpm <= 0:
             bpm = 120.0
 
-        onset_frames = librosa.onset.onset_detect(y=audio, sr=sample_rate, backtrack=True)
+        # Score the actual attack peaks. Backtracked frames can lie in silence,
+        # so their energy is unsuitable for deciding which hits are clearest.
+        onset_envelope = librosa.onset.onset_strength(y=audio, sr=sample_rate)
+        peak_frames = librosa.onset.onset_detect(onset_envelope=onset_envelope, sr=sample_rate)
+        onset_frames = librosa.onset.onset_backtrack(peak_frames, onset_envelope) if len(peak_frames) else peak_frames
         onset_times = librosa.frames_to_time(onset_frames, sr=sample_rate)
         # Keep the chart readable and avoid duplicate onset detections within 70 ms.
         notes = []
+        strengths = []
         last_time = -1.0
-        for time in onset_times:
+        for time, peak_frame in zip(onset_times, peak_frames):
             seconds = float(time)
             if seconds - last_time < 0.07:
                 continue
             notes.append({"time": round(seconds, 3), "lane": classify_onset(audio, sample_rate, seconds)})
+            strengths.append(float(onset_envelope[peak_frame]))
             last_time = seconds
+
+        snare_before = sum(note["lane"] == "snare" for note in notes)
+        notes = retain_strongest_snares(notes, strengths)
+        snare_after = sum(note["lane"] == "snare" for note in notes)
 
         # Fallback if no onsets detected (quiet track / ambient)
         if not notes and len(beat_frames) > 0:
@@ -179,6 +200,7 @@ def analyze(file: UploadFile = File(...)) -> dict:
             "analyzedDurationSeconds": round(analyzed_duration, 3),
             "beatTimes": [round(float(time), 3) for time in beats],
             "notes": notes,
+            "snareReduction": {"originalCount": snare_before, "keptCount": snare_after},
             # Mono 22.05 kHz PCM keeps the two-minute browser-stored backing track compact.
             "backingAudioBase64": base64.b64encode(backing_pcm).decode("ascii"),
             "backingSampleRate": backing_rate,

@@ -59,7 +59,7 @@ function saveLocalRooms(rooms: RoomData[]) {
 
 export async function fetchRooms(): Promise<RoomData[]> {
   const localCustom = getLocalRooms();
-  const demoList = DEMO_ROOMS.map(r => ({
+  const demoList: RoomData[] = DEMO_ROOMS.map(r => ({
     id: r.id,
     name: r.name,
     host: r.host,
@@ -67,6 +67,7 @@ export async function fetchRooms(): Promise<RoomData[]> {
     players: r.players,
     capacity: r.capacity,
     challenge: r.challenge,
+    visibility: 'public',
     status: r.status as 'Waiting' | 'Playing' | 'Finished',
     color: r.color,
   }));

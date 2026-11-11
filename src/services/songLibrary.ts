@@ -39,7 +39,7 @@ export function buildCustomChallenge(song: Omit<SavedSong, 'file'>, source: stri
     music: { src: source, introMs: startMs },
     notes,
   }, { genre: 'Your music', color: 'from-violet-500 via-fuchsia-800 to-zinc-950', source: 'upload', chartSource: estimated ? 'estimated' : 'demo' });
-  return song.demoAnalysis ? chooseSongDifficulty(prepared, song.difficulty) : prepared;
+  return chooseSongDifficulty(prepared, song.difficulty);
 }
 
 export function musicSource(source: string, basePath = '/'): string {

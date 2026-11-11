@@ -1,14 +1,14 @@
 import { SongStructure } from '../components/SongPresentation';
-import { formatSongTime } from '../services/songExperience';
+import { chooseSongDifficulty, formatSongTime } from '../services/songExperience';
 import { musicSource } from '../services/songLibrary';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Pause, Play, ShieldAlert, Volume2 } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageProvider';
 import type { AppSettings, DrumType, GameResult, HitRating, RhythmChallenge, ScreenType } from '../types';
 import { DRUMS } from '../data/drums';
 import { audioEngine } from '../services/audio';
 import { cameraTracker, type TrackingState } from '../services/cameraTracker';
-import { createSongState, expireSongNotes, hitSongNote, songResult } from '../services/rhythm';
+import { createSongState, expireSongNotes, hitSongNote, songAccuracy, songResult, TIMING_WINDOWS } from '../services/rhythm';
 import { NoteHighway } from '../components/NoteHighway';
 import { DrumKitSelector } from '../components/DrumKitSelector';
 import { CameraView } from '../components/CameraView';
@@ -21,7 +21,7 @@ import { MultiplayerHUD } from '../components/MultiplayerHUD';
 import { OpponentGameplayView } from '../components/OpponentGameplayView';
 
 export function SongGameScreen({
-  challenge,
+  challenge: sourceChallenge,
   settings,
   onFinishGame,
   onNavigate,
@@ -42,13 +42,14 @@ export function SongGameScreen({
     isHost?: boolean;
   } | null;
 }) {
+  const challenge = useMemo(() => chooseSongDifficulty(sourceChallenge, sourceChallenge.difficulty), [sourceChallenge]);
   const { t, locale } = useLanguage();
   const { profile } = useAuth();
   const currentUserId = profile?.id || 'you';
   const currentUserName = profile?.displayName || 'You';
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const statsRef = useRef(createSongState(challenge.notes));
+  const statsRef = useRef(createSongState(challenge.notes, challenge));
   const finishedRef = useRef(false);
   const [stats, setStats] = useState(statsRef.current);
   const [playing, setPlaying] = useState(false);
@@ -162,7 +163,7 @@ export function SongGameScreen({
 
   const hit = useCallback((drum: DrumType) => {
     const audio = audioRef.current;
-    if (!audio || audio.paused || finishedRef.current || audio.currentTime * 1000 < (challenge.music?.introMs ?? 0)) return;
+    if (!audio || audio.paused || finishedRef.current) return;
 
     // Together mode: lock input when partner is playing
     if (isTogetherMode && !isMyTurn) return;
@@ -191,7 +192,7 @@ export function SongGameScreen({
       sendVersusProgress({
         score: result.state.score,
         combo: result.state.combo,
-        accuracy: result.state.accuracy,
+        accuracy: songAccuracy(result.state),
         currentNoteIndex: currentProcessed,
         totalNotes: challenge.notes.length,
         lastHit: { drum, rating: result.rating },
@@ -278,7 +279,6 @@ export function SongGameScreen({
 
   const upcoming = stats.notes.find((note) => !note.hit);
   const processed = stats.notes.filter((note) => note.hit).length;
-  const count = Math.max(1, Math.ceil(((challenge.music?.introMs ?? 0) - timeMs) / 600));
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-6 sm:px-6">
@@ -350,11 +350,9 @@ export function SongGameScreen({
           <h2 className="font-bold text-white">
             {!started
               ? t('Get Ready')
-              : playing && timeMs < challenge.music!.introMs
-                ? count
-                : isTogetherMode && !isMyTurn
-                  ? t("Input locked. Partner is playing now.")
-                  : t('Hit the drums when the notes reach the glowing line.')}
+              : isTogetherMode && !isMyTurn
+                ? t("Input locked. Partner is playing now.")
+                : t('Hit the drums when the notes reach the glowing line.')}
           </h2>
           <p className="mt-1 text-xs text-zinc-400">
             {isTogetherMode
@@ -402,10 +400,16 @@ export function SongGameScreen({
         <span>{t('Feel the song')}</span>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-400/20 bg-sky-400/5 px-4 py-3 text-xs text-sky-200">
+        <span className="font-semibold">{t('Hit window: ±{ms} ms', { ms: TIMING_WINDOWS[challenge.difficulty].goodMs })}</span>
+        <span className="text-zinc-400">{t(challenge.difficulty === 'Easy' ? 'Fewer notes. More time to find your groove.' : 'Early and late hits count inside the highlighted band.')}</span>
+      </div>
+
       <NoteHighway
         notes={stats.notes}
         currentTimeMs={timeMs}
         bpm={challenge.bpm}
+        hitWindowMs={stats.timing.goodMs}
         lastHitFeedback={feedback}
         activeHits={activeHits}
         onDrumHit={hit}

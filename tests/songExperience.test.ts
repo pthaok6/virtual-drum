@@ -3,9 +3,82 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { SONG_CHALLENGES } from '../src/data/songs';
 import { RECORDING_CHALLENGES } from '../src/data/recordings';
-import { chooseSongDifficulty, demoAnalysis, songSections } from '../src/services/songExperience';
+import { chooseSongDifficulty, demoAnalysis, prepareSong, simplifyEasyNotes, songSections } from '../src/services/songExperience';
 import { buildCustomChallenge } from '../src/services/songLibrary';
 import { createSongState, hitSongNote, songResult } from '../src/services/rhythm';
+import type { BeatNote, RhythmChallenge } from '../src/types';
+
+test('Easy removes rapid snare repetitions while preserving original on-beat hits', () => {
+  const notes: BeatNote[] = Array.from({ length: 21 }, (_, index) => ({
+    id: 'snare-' + index, drum: 'snare', timeMs: 1000 + index * 100,
+  }));
+  const snapshot = structuredClone(notes);
+  const easy = simplifyEasyNotes(notes, 120, 1000);
+  assert.deepEqual(easy.map(note => note.timeMs), [1000, 1500, 2000, 2500, 3000]);
+  assert.deepEqual(notes, snapshot);
+  assert.ok(easy.every(note => notes.includes(note)));
+  assert.deepEqual(simplifyEasyNotes(easy, 120, 1000), easy);
+});
+
+test('Easy keeps a main hit instead of an earlier ghost and avoids rapid drum switches', () => {
+  const notes: BeatNote[] = [
+    { id: 'ghost', drum: 'snare', timeMs: 1380 },
+    { id: 'nearby-kick', drum: 'kick', timeMs: 1420 },
+    { id: 'backbeat', drum: 'snare', timeMs: 1500 },
+    { id: 'kick', drum: 'kick', timeMs: 2000 },
+    { id: 'next-backbeat', drum: 'snare', timeMs: 2500 },
+    { id: 'hat', drum: 'hihat', timeMs: 2750 },
+  ];
+  assert.deepEqual(simplifyEasyNotes(notes, 120, 1000).map(note => note.id), ['backbeat', 'kick', 'next-backbeat']);
+});
+
+test('Easy spacing follows slow tempos and tolerates rounded beat times', () => {
+  const slow: BeatNote[] = [0, 500, 1000, 1500, 2000].map((timeMs, index) => ({ id: 'slow-' + index, drum: 'snare', timeMs }));
+  assert.deepEqual(simplifyEasyNotes(slow, 60).map(note => note.timeMs), [0, 1000, 2000]);
+  const bpm = 117.5;
+  const rounded: BeatNote[] = Array.from({ length: 8 }, (_, index) => ({ id: 'rounded-' + index, drum: 'snare', timeMs: Math.round(1800 + index * 60000 / bpm) }));
+  assert.deepEqual(simplifyEasyNotes(rounded, bpm, 1800), rounded);
+});
+
+test('Easy remains playable for charts containing only other drums without repeated thinning', () => {
+  const notes: BeatNote[] = [
+    { id: 'hat-0', drum: 'hihat', timeMs: 0 },
+    { id: 'hat-100', drum: 'hihat', timeMs: 100 },
+    { id: 'hat-500', drum: 'hihat', timeMs: 500 },
+    { id: 'tom-750', drum: 'tom', timeMs: 750 },
+  ];
+  const easy = simplifyEasyNotes(notes, 120);
+  assert.deepEqual(easy.map(note => note.id), ['hat-0', 'hat-500', 'tom-750']);
+  assert.deepEqual(simplifyEasyNotes(easy, 120), easy);
+  assert.deepEqual(simplifyEasyNotes([], 120), []);
+});
+
+test('preparing and selecting Easy fixes legacy density without changing original or harder charts', () => {
+  const notes: BeatNote[] = [
+    { id: 'kick', drum: 'kick', timeMs: 1000 },
+    { id: 'ghost', drum: 'snare', timeMs: 1380 },
+    { id: 'snare', drum: 'snare', timeMs: 1500 },
+    { id: 'hat', drum: 'hihat', timeMs: 1750 },
+    { id: 'kick-2', drum: 'kick', timeMs: 2000 },
+  ];
+  const raw: RhythmChallenge = {
+    id: 'dense-upload', title: 'Dense upload', artist: 'Test', difficulty: 'Easy', bpm: 120,
+    durationSeconds: 6, description: '', music: { src: 'blob:test', introMs: 1000 }, notes,
+  };
+  const prepared = prepareSong(raw, { genre: 'Test', color: '', source: 'upload', chartSource: 'estimated' });
+  assert.deepEqual(prepared.notes, notes);
+  assert.deepEqual(chooseSongDifficulty(prepared, 'Medium').notes.map(({ id, drum, timeMs }) => ({ id, drum, timeMs })), notes);
+  for (const note of notes) {
+    assert.ok(chooseSongDifficulty(prepared, 'Hard').notes.some(entry => entry.id === note.id && entry.timeMs === note.timeMs));
+  }
+  const expected = ['kick', 'snare', 'kick-2'];
+  assert.deepEqual(prepared.song!.charts.Easy.map(note => note.id), expected);
+  const legacy = { ...prepared, song: { ...prepared.song!, charts: { ...prepared.song!.charts, Easy: notes } } };
+  const selected = chooseSongDifficulty(legacy, 'Easy');
+  assert.deepEqual(selected.notes.map(note => note.id), expected);
+  assert.deepEqual(chooseSongDifficulty(selected, 'Easy').notes, selected.notes);
+  assert.deepEqual(legacy.song.charts.Easy, notes);
+});
 
 test('difficulty charts preserve the recording while changing drum detail', () => {
   for (const song of [...SONG_CHALLENGES, ...RECORDING_CHALLENGES]) {

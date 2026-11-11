@@ -12,14 +12,16 @@ interface NoteHighwayProps {
   notes: BeatNote[];
   currentTimeMs: number;
   bpm: number;
+  hitWindowMs?: number;
   lastHitFeedback?: { drum: DrumType; rating: HitRating; combo: number } | null;
   activeHits?: Record<DrumType, { isHit: boolean; rating?: HitRating }>;
   onDrumHit?: (drum: DrumType) => void;
 }
 
-export function NoteHighway({ notes, currentTimeMs, bpm, lastHitFeedback, activeHits, onDrumHit }: NoteHighwayProps) {
+export function NoteHighway({ notes, currentTimeMs, bpm, hitWindowMs = 180, lastHitFeedback, activeHits, onDrumHit }: NoteHighwayProps) {
   const { t } = useLanguage();
-  const visibleNotes = notes.filter(note => note.timeMs >= currentTimeMs - LOOK_BEHIND_MS && note.timeMs <= currentTimeMs + LOOK_AHEAD_MS);
+  const visibleNotes = notes.filter(note => note.timeMs >= currentTimeMs - Math.max(LOOK_BEHIND_MS, hitWindowMs) && note.timeMs <= currentTimeMs + LOOK_AHEAD_MS);
+  const bandHalfHeight = hitWindowMs / LOOK_AHEAD_MS * HIT_LINE_Y;
 
   return <Card className="overflow-hidden rounded-2xl border-zinc-800 bg-zinc-950 p-3 text-zinc-100 shadow-xl sm:p-4">
     <div className="mb-3 flex items-center justify-between gap-3">
@@ -28,6 +30,7 @@ export function NoteHighway({ notes, currentTimeMs, bpm, lastHitFeedback, active
     </div>
 
     <div className="relative h-[280px] overflow-hidden rounded-xl border border-zinc-800 bg-[#090b12] sm:h-[340px]">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 z-[1] border-y border-amber-300/20 bg-amber-300/[0.06]" style={{ top: `${HIT_LINE_Y - bandHalfHeight}%`, height: `${bandHalfHeight * 2}%` }} />
       <div className="absolute inset-0 grid grid-cols-5">
         {LANE_ORDER.map((id, index) => {
           const drum = DRUMS.find(item => item.id === id)!;

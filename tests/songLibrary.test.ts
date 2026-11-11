@@ -21,6 +21,19 @@ test('saved song metadata can regenerate the chart with a new playback URL', () 
   assert.equal(restored.music?.src, 'blob:restored');
   assert.equal(restored.id, original.id);
 });
+
+test('analyzed uploads immediately use the chosen chart, including restored dense Easy songs', () => {
+  const analysisNotes = Array.from({ length: 21 }, (_, index) => ({ time: 2 + index * 0.1, lane: 'snare' as const }));
+  const easy = buildCustomChallenge({ ...song, analysisNotes }, 'blob:easy');
+  const medium = buildCustomChallenge({ ...song, difficulty: 'Medium', analysisNotes }, 'blob:medium');
+  assert.equal(easy.notes.length, 5);
+  assert.equal(medium.notes.length, analysisNotes.length);
+  assert.deepEqual(easy.notes, easy.song!.charts.Easy);
+  assert.ok(easy.notes.every((note, index, notes) => !index || note.timeMs - notes[index - 1].timeMs >= 500));
+  assert.deepEqual(easy.song!.charts.Medium, medium.notes);
+  const restored = buildCustomChallenge(JSON.parse(JSON.stringify({ ...song, analysisNotes })), 'blob:restored');
+  assert.deepEqual(restored.notes, easy.notes);
+});
 test('invalid title, tempo, duration, or beat offset is rejected', () => {
   for (const partial of [{ title: ' ' }, { bpm: 0 }, { bpm: 241 }, { bpm: NaN }, { durationSeconds: Infinity }, { durationSeconds: 601 }, { durationSeconds: 2 }, { startSeconds: -1 }, { startSeconds: 29.5 }]) {
     assert.throws(() => buildCustomChallenge({ ...song, ...partial }, 'blob:test'));

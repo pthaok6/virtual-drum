@@ -13,7 +13,7 @@ import { CommunityUser, ReplayClip, ROOMS, USERS } from '../data/community';
 import { GameResult, RhythmChallenge } from '../types';
 import { audioEngine } from '../services/audio';
 import { useAuth } from '../context/AuthContext';
-import { fetchRooms, createRoom, type RoomData } from '../services/roomService';
+import { fetchRooms, createRoom, type RoomData, type RoomPlayer } from '../services/roomService';
 import { useRoomRealtime } from '../hooks/useRoomRealtime';
 
 const card = 'rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 sm:p-6';

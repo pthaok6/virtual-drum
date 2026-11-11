@@ -6,6 +6,7 @@ export interface SongAnalysis {
   analyzedDurationSeconds: number;
   beatTimes: number[];
   notes: { id: string; time: number; lane: DrumType }[];
+  snareReduction?: { originalCount: number; keptCount: number };
   backingTrack: File;
 }
 
